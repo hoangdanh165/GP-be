@@ -24,9 +24,11 @@ future==1.0.0
 gevent==24.11.1
 google-auth==2.38.0
 greenlet==3.1.1
+gunicorn==23.0.0
 idna==3.10
 jmespath==1.0.1
 multidict==6.1.0
+packaging==24.2
 pillow==11.1.0
 propcache==0.3.0
 psycopg2==2.9.10
