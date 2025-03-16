@@ -2,6 +2,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 import os
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,6 +22,11 @@ CORS_ALLOW_CREDENTIALS = bool(os.environ.get('CORS_ALLOW_CREDENTIALS'))
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS').split(',')
 
 CORS_ALLOW_ALL_ORIGINS = bool(os.environ.get('CORS_ALLOW_ALL_ORIGINS'))
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "Cross-Origin-Opener-Policy",
+]
+CORS_EXPOSE_HEADERS = ["Cross-Origin-Opener-Policy"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',

@@ -1,3 +1,6 @@
+
+import os
+from google.oauth2 import id_token
 import requests
 from django.shortcuts import render
 from django.contrib.auth import authenticate
@@ -29,12 +32,11 @@ from ..services.user import (
 )
 from ..permissions import (
     IsAdmin, 
-    IsCoach, 
     IsCustomer, 
     IsSale,
 )
 
-
+CLIENT_ID = os.environ.get('CLIENT_ID')
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all().order_by('id')
@@ -159,68 +161,6 @@ class UserViewSet(viewsets.ModelViewSet):
         return render(request, 'user/reset_password/reset-password-form.html', {'token': token, 'frontend_host': settings.FE_HOST})
 
     
-    @action(methods=['post'], url_path='forgot-password-mobile', detail=False, permission_classes=[AllowAny],
-            renderer_classes=[renderers.JSONRenderer])
-    def forgot_password_mobile(self, request, *args, **kwargs):
-        phone = request.data.get('phone')
-        if phone:
-            if not User.objects.filter(phone=phone).first():
-                return Response({'message': 'No user is registered with this phone number!'}, 
-                                status=status.HTTP_404_NOT_FOUND)
-            
-            UserResetPassword.objects.create(
-                user = User.objects.get(phone=phone),
-                phone = phone,
-                expired_time=timezone.now() + timezone.timedelta(hours=1),
-            )
-            
-            send_sms(phone)
-
-            return Response({'message': 'Verification code is sent to your phone, please check SMS!'},
-                            status=status.HTTP_200_OK)
-        
-        return Response({'message': 'Please provide your phone number!'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-    @action(methods=['post'], url_path='reset-password-mobile', detail=False, permission_classes=[AllowAny],
-            renderer_classes=[renderers.JSONRenderer])
-    def reset_password_mobile(self, request, *args, **kwargs):
-        code = request.data.get('code')
-        phone = request.data.get('phone')
-        new_pass = request.data.get('new_password')
-        
-        if not code:
-            return Response({'message': 'Verification code required!'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not new_pass:
-            return Response({'message': 'New password required!'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        reset_entry_mobile = UserResetPassword.objects.filter(phone=phone, confirmed=False).first()
-
-        if not reset_entry_mobile:
-            return Response({'message': 'Not found!'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if reset_entry_mobile.expired_time < timezone.now():
-            return Response({'error': 'Code has expired!'}, status=status.HTTP_400_BAD_REQUEST)
-        
-
-        mobile_user = reset_entry_mobile.user
-
-        if mobile_user.check_password(new_pass):
-            return Response({'message': 'You typed an old password!'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        verification_response = verify_sms_code(code, phone)
-        print(verification_response)
-        if 'status' in verification_response:
-            mobile_user.password = make_password(new_pass) 
-            mobile_user.save()
-            reset_entry_mobile.confirmed = True
-            reset_entry_mobile.save()
-            return Response({'message': 'Password has been reset successfully'}, status=status.HTTP_200_OK)
-        
-        return Response({'message': 'Invalid verification code!'}, status=status.HTTP_400_BAD_REQUEST)
-        
-    
     @action(methods=['post'], url_path='reset-password', detail=False, permission_classes=[AllowAny],
             renderer_classes=[renderers.JSONRenderer])
     def reset_password(self, request, *args, **kwargs):
@@ -315,61 +255,129 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=400)
 
 
-    @action(methods=['post'], url_path='log-in', detail=False, permission_classes=[AllowAny], 
+    @action(methods=['post'], url_path='sign-in', detail=False, permission_classes=[AllowAny], 
             renderer_classes=[renderers.JSONRenderer])
-    def log_in(self, request):
+    def sign_in(self, request):
         email = request.data.get("email")
         password = request.data.get("password")
         
-        user = authenticate(request, username=email, password=password)
         
-        if user is not None:
-            refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
-            refresh_token = str(refresh)
-            avatar_url = user.avatar_url
-            full_name = None
+        try:
+            check_user = User.objects.filter(email=email).first()
 
-            if user.role.name in ['customer', 'coach']:
-                if user.role.name == 'coach':
-                    coach_profile = getattr(user, 'coach_profile', None)
-                    if coach_profile:
-                        full_name = coach_profile.first_name + " " + coach_profile.last_name
-                    else:
-                        full_name = "Chưa thêm hồ sơ"
+            if check_user:
+                if not check_user.password:
+                    return Response({"error": "This account was registered using Google. Please sign in with Google."}, status=status.HTTP_400_BAD_REQUEST)
+                
+            user = authenticate(request, username=email, password=password)
+            if user is not None:
+                refresh = RefreshToken.for_user(user)
+                access_token = str(refresh.access_token)
+                refresh_token = str(refresh)
+                avatar = user.avatar
+                full_name = user.full_name
+
+                if avatar:
+                    avatar = avatar.url
                 else:
-                    customer_profile = getattr(user, 'customer_profile', None)
-                    if customer_profile:
-                        full_name = customer_profile.first_name + " " + customer_profile.last_name
-                    else:
-                        full_name = "Chưa thêm hồ sơ"
+                    avatar = None
 
-            if avatar_url:
-                avatar = avatar_url.url
+                response = Response({
+                    "accessToken": access_token,
+                    "refreshToken": refresh_token,
+                    "role": user.role.name,
+                    "status": user.status,
+                    "avatar": avatar,
+                    "fullName": full_name,
+                }, status=status.HTTP_200_OK)
+
+                response.set_cookie(
+                    key='refreshToken',
+                    value=refresh_token,
+                    httponly=True,  
+                    secure=True, # True if Production mode is on
+                    samesite='None', 
+                    max_age=24*60*60, 
+                )
+                return response
             else:
-                avatar = None
-
-            response = Response({
-                "accessToken": access_token,
-                "refreshToken": refresh_token,
-                "role": user.role.name,
-                "status": user.status,
-                "avatar": avatar,
-                "fullName": full_name,
-            }, status=status.HTTP_200_OK)
-
-            response.set_cookie(
-                key='refreshToken',
-                value=refresh_token,
-                httponly=True,  
-                secure=True, # True if Production mode is on
-                samesite='None', 
-                max_age=24*60*60, 
-            )
-            return response
-        else:
-            return Response({"detail": "Invalid credentials!"}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"error": "Invalid username or password!"}, status=status.HTTP_401_UNAUTHORIZED)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+    @action(methods=['post'], url_path='sign-in-with-google', detail=False, permission_classes=[AllowAny], renderer_classes=[renderers.JSONRenderer])
+    def sign_in_with_google(self, request): 
+        access_token  = request.data.get("token")
+
+        if not access_token:
+            return Response({"error": "Missing access_token"}, status=400)
+        
+        google_user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+        response = requests.get(google_user_info_url, headers={"Authorization": f"Bearer {access_token}"})
+        
+        if response.status_code != 200:
+            return Response({"error": "Invalid access token"}, status=400)
+        
+        user_info = response.json()
+        
+        email = user_info.get("email")
+        email_verified = user_info.get("email_verified")
+        full_name = user_info.get("name")
+        avatar = user_info.get("picture")
+        google_id = user_info.get("sub")
+        
+        user = User.objects.filter(google_id=google_id).first()
+
+        if user:
+            if user.email != email:
+                user.email = email
+                user.save()
+        else:
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "full_name": full_name,
+                    "email_verified": email_verified,
+                    "avatar": avatar,
+                    "google_id": google_id
+                }
+            )
+
+            if not created:
+                user.full_name = full_name
+                user.avatar = avatar
+                user.email_verified = email_verified
+                user.google_id = google_id
+                user.save()
+
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+        
+        response = Response({
+            "accessToken": access_token,
+            "refreshToken": refresh_token,
+            "role": user.role.name,
+            "status": user.status,
+            "avatar": avatar,
+            "fullName": full_name,
+        }, status=status.HTTP_200_OK)
+
+        response.set_cookie(
+            key='refreshToken',
+            value=refresh_token,
+            httponly=True,  
+            secure=True,
+            samesite='None', 
+            max_age=24*60*60, 
+        )
+
+        return response
+        
+        
+
 
     @action(methods=['post'], url_path='refresh', detail=False, permission_classes=[AllowAny], 
             renderer_classes=[renderers.JSONRenderer])
@@ -386,7 +394,7 @@ class UserViewSet(viewsets.ModelViewSet):
             user_id = token['user_id']  
             user = User.objects.get(id=user_id)
 
-            avatar_url = user.avatar_url
+            avatar = user.avatar
             full_name = None
 
             if user.role.name in ['customer', 'coach']:
@@ -397,8 +405,8 @@ class UserViewSet(viewsets.ModelViewSet):
             else:
                 pass
             
-            if avatar_url:
-                avatar = avatar_url.url
+            if avatar:
+                avatar = avatar.url
             else:
                 avatar = None
             
