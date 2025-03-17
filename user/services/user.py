@@ -82,7 +82,7 @@ def generate_token(user):
     token_lifetime = datetime.now() + timedelta(hours=3)
 
     payload = {
-        'user_id': user.id,
+        'user_id': str(user.id),
         'exp': token_lifetime
     }
 

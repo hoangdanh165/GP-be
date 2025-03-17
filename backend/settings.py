@@ -13,6 +13,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 
 DEBUG= os.environ.get('DEBUG')
 
+DEFAULT_HOST = os.environ.get('DEFAULT_HOST')
+
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(',')
 
 FE_HOST = os.environ.get('FE_HOST', 'http://localhost:3000')

@@ -70,16 +70,16 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)  
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
 
-    @action(methods=['post'], url_path='register', detail=False, permission_classes=[AllowAny], 
+    @action(methods=['post'], url_path='sign-up', detail=False, permission_classes=[AllowAny], 
             renderer_classes=[renderers.JSONRenderer])
-    def register(self, request):
+    def sign_up(self, request):
         serializer = self.get_serializer(data=request.data)
 
         if serializer.is_valid():
             user = serializer.save()
             send_verification_email(user)
 
-            return Response({'status': 'Account created successfully, please check your email!'}, 
+            return Response({'detail': 'Account created successfully, please check your email!'}, 
                             status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

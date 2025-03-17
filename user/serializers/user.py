@@ -17,7 +17,17 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'password', 'phone', 'status', 'role', 'email_verified']
+        fields = [
+            'id', 
+            'full_name',
+            'email', 
+            'password', 
+            'phone', 
+            'address', 
+            'role',
+            'status',
+            'email_verified',
+        ]
         extra_kwargs = {
             'password': {'write_only': True}  
         }
@@ -35,10 +45,10 @@ class UserSerializer(serializers.ModelSerializer):
         password = attrs.get("password", None)
         
         if email is None:
-            raise ValidationError({"detail": "email is missing"})
+            raise ValidationError({"error": "email is missing"})
         
         if password is None:
-            raise ValidationError({"detail": "password is missing"})
+            raise ValidationError({"error": "password is missing"})
         
         return attrs
         
