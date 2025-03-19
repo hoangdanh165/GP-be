@@ -395,18 +395,13 @@ class UserViewSet(viewsets.ModelViewSet):
             user = User.objects.get(id=user_id)
 
             avatar = user.avatar
-            full_name = None
+            full_name = user.full_name
 
-            if user.role.name in ['customer', 'coach']:
-                if user.role.name == 'coach' and user.coach_profile:
-                    full_name = user.coach_profile.first_name + " " + user.coach_profile.last_name
-                else:
-                    full_name = user.customer_profile.first_name + " " + user.customer_profile.last_name
-            else:
-                pass
             
             if avatar:
                 avatar = avatar.url
+            elif user.avatar_url:
+                avatar = user.avatar_url
             else:
                 avatar = None
             
