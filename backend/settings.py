@@ -31,6 +31,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 CORS_EXPOSE_HEADERS = ["Cross-Origin-Opener-Policy"]
 
 INSTALLED_APPS = [
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     'user',
 ]
 
+
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -59,8 +61,18 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'backend.urls'   
-
+AUTH_USER_MODEL = 'user.User'
 WSGI_APPLICATION = 'backend.wsgi.application'
+ASGI_APPLICATION = "backend.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": os.environ.get('REDIS_HOST'),
+        },
+    },
+}
 
 # DATABASE
 DATABASES = {
@@ -91,7 +103,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': (os.environ.get('AUTH_HEADER_TYPES', 'Bearer'),),
 }
 
-AUTH_USER_MODEL = 'user.User'
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
