@@ -283,6 +283,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     avatar = None
 
                 response = Response({
+                    "userId": user.id,
                     "accessToken": access_token,
                     "refreshToken": refresh_token,
                     "role": user.role.name,
@@ -340,7 +341,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 defaults={
                     "full_name": full_name,
                     "email_verified": email_verified,
-                    "avatar": avatar,
+                    "avatar_url": avatar,
                     "google_id": google_id
                 }
             )
@@ -357,6 +358,7 @@ class UserViewSet(viewsets.ModelViewSet):
         refresh_token = str(refresh)
         
         response = Response({
+            "userId": user.id,
             "accessToken": access_token,
             "refreshToken": refresh_token,
             "role": user.role.name,
@@ -406,6 +408,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 avatar = None
             
             return Response({
+                "userId": user.id,
                 "accessToken": new_access_token,
                 "role": user.role.name,
                 "avatar": avatar,

@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.contrib.auth import get_user_model
+from .conversation import Conversation
 
 User = get_user_model()
 
@@ -22,6 +23,7 @@ class Message(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
     
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_messages")
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_messages", null=True, blank=True)
@@ -32,5 +34,26 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        conversation = Conversation.objects.filter(
+            participants=self.sender
+        ).filter(participants=self.receiver).first()
+
+        if not conversation:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(self.sender, self.receiver)
+
+        conversation.last_message = self.message
+        conversation.save()
+
     def __str__(self):
         return f"Message from {self.sender} to {self.receiver or 'Group'} ({self.message_type})"
+
+    class Meta:
+        db_table = 'message'
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["sender", "receiver", "created_at"]),
+        ]

@@ -41,6 +41,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = 'user'
 
+    def get_full_name(self):
+        return self.full_name
+    
     def get_avatar(self):
         if self.avatar:
             return self.avatar.url
