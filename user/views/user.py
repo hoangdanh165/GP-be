@@ -23,6 +23,7 @@ from ..serializers.user import UserInfoSerializer
 from ..serializers.user import UserAccountSerializer
 from ..models import User, UserResetPassword
 from base.utils.custom_pagination import CustomPagination
+from ..serializers.user import StaffSerializer
 from ..services.user import (
     verify_token, 
     send_verification_email, 
@@ -436,3 +437,12 @@ class UserViewSet(viewsets.ModelViewSet):
         deleted_count, _ = users.delete()
         
         return Response({'message': f'Deleted {deleted_count} user(s) successfully!'}, status=status.HTTP_200_OK)
+    
+
+    @action(methods=['post'], url_path='get-staff', detail=False, permission_classes=[IsAuthenticated], 
+        renderer_classes=[renderers.JSONRenderer])
+    def get_staff(self, request):
+        staffs = User.objects.filter(role__in=["admin", "sale"])
+        serializer = StaffSerializer(staffs, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)

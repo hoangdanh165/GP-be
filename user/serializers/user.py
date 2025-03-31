@@ -133,3 +133,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['phone', 'avatar_url', 'email']
+
+class StaffSerializer(serializers.ModelSerializer):
+    avatar = serializers.CharField(source="get_avatar")
+    
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'full_name',
+            'avatar',
+            'email',
+            'role',
+        ]

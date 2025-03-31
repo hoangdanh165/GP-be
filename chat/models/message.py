@@ -16,12 +16,6 @@ class Message(models.Model):
         ('reaction', 'Reaction'),
     ]
 
-    STATUS_TYPES = [
-        ('sent', 'Sent'),
-        ('received', 'Received'),
-        ('seen', 'Seen'),
-    ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
     
@@ -29,7 +23,7 @@ class Message(models.Model):
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_messages", null=True, blank=True)
     message = models.TextField(blank=True, null=True)
     message_type = models.CharField(max_length=10, choices=MESSAGE_TYPES, default='text')
-    status = models.CharField(max_length=10, choices=STATUS_TYPES, default='sent')
+    seen = models.BooleanField(default=False)
     parent_message = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name="replies")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

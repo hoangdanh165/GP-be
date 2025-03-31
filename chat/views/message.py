@@ -57,11 +57,10 @@ class MessageViewSet(viewsets.ModelViewSet):
     
     @action(methods=['get'], url_path='by-conversation/(?P<conversation_id>[^/.]+)', detail=False, permission_classes=[IsAuthenticated])
     def get_messages_by_conversation(self, request, conversation_id):
-        """ Lấy tất cả tin nhắn theo `conversation_id` (hỗ trợ phân trang). """
         conversation = get_object_or_404(Conversation, id=conversation_id)
 
         if request.user not in conversation.participants.all():
-            return Response({"error": "Bạn không có quyền truy cập vào cuộc trò chuyện này!"}, status=403)
+            return Response({"error": "You don't have permission to access this conversation!"}, status=403)
 
         messages = Message.objects.filter(conversation=conversation).order_by("created_at")
 
