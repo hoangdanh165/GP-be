@@ -44,6 +44,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_full_name(self):
         return self.full_name
     
+    def get_role(self):
+        return self.role.name
+    
     def get_avatar(self):
         if self.avatar:
             return self.avatar.url

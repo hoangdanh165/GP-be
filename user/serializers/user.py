@@ -136,7 +136,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class StaffSerializer(serializers.ModelSerializer):
     avatar = serializers.CharField(source="get_avatar")
-    
+    role = serializers.CharField(source="get_role")
+    had_conversation = serializers.BooleanField()
+
     class Meta:
         model = User
         fields = [
@@ -145,4 +147,5 @@ class StaffSerializer(serializers.ModelSerializer):
             'avatar',
             'email',
             'role',
+            'had_conversation',
         ]

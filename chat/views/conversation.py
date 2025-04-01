@@ -22,6 +22,7 @@ from base.utils.custom_pagination import CustomPagination
 from ..models.message import Message
 from ..models.conversation import Conversation
 from ..serializers.conversation import ConversationSerializer
+from user.models.user import User
 
 class ConversationViewSet(viewsets.ModelViewSet):
     # queryset = Conversation.objects.all().order_by('-create_at')
@@ -41,3 +42,27 @@ class ConversationViewSet(viewsets.ModelViewSet):
         conversations = self.get_queryset()
         serializer = self.get_serializer(conversations, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    @action(methods=['post'], url_path='create', detail=False, permission_classes=[IsAuthenticated], 
+            renderer_classes=[renderers.JSONRenderer])
+    def create_conversation(self, request):
+        participants_data = request.data.get("participants")
+        print(participants_data)
+
+        if not participants_data or not isinstance(participants_data, list):
+            return Response({"error": "Participants must be a list of user IDs."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            participants = [User.objects.get(id=participant_id) for participant_id in participants_data]
+        except User.DoesNotExist:
+            return Response({"error": "One or more participants do not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        conversation = Conversation.objects.create()
+        conversation.participants.set(participants)
+
+        # Nếu bạn có serializer, bạn có thể sử dụng nó ở đây
+        # serializer = self.get_serializer(conversation)
+        # return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response({"message": "Conversation created successfully."}, status=status.HTTP_201_CREATED)

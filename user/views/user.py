@@ -4,7 +4,8 @@ from google.oauth2 import id_token
 import requests
 from django.shortcuts import render
 from django.contrib.auth import authenticate
-from django.http import JsonResponse
+from django.db.models import Exists, OuterRef
+
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, renderers
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -24,6 +25,7 @@ from ..serializers.user import UserAccountSerializer
 from ..models import User, UserResetPassword
 from base.utils.custom_pagination import CustomPagination
 from ..serializers.user import StaffSerializer
+from chat.models.conversation import Conversation
 from ..services.user import (
     verify_token, 
     send_verification_email, 
@@ -439,10 +441,21 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'message': f'Deleted {deleted_count} user(s) successfully!'}, status=status.HTTP_200_OK)
     
 
-    @action(methods=['post'], url_path='get-staff', detail=False, permission_classes=[IsAuthenticated], 
+    @action(methods=['get'], url_path='get-staff', detail=False, permission_classes=[IsAuthenticated], 
         renderer_classes=[renderers.JSONRenderer])
     def get_staff(self, request):
-        staffs = User.objects.filter(role__in=["admin", "sale"])
+        current_user = request.user.id
+
+        conversations_subquery = Conversation.objects.filter(
+            participants=current_user
+        ).filter(
+            participants=OuterRef("pk")
+        ).values("id")
+
+        staffs = User.objects.filter(role__name__in=["admin", "sale"]).annotate(
+            had_conversation=Exists(conversations_subquery)
+        ).exclude(id=current_user)
+        
         serializer = StaffSerializer(staffs, many=True)
         
         return Response(serializer.data, status=status.HTTP_200_OK)

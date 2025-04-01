@@ -28,6 +28,7 @@ CORS_ALLOW_ALL_ORIGINS = bool(os.environ.get('CORS_ALLOW_ALL_ORIGINS'))
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "Cross-Origin-Opener-Policy",
 ]
+
 CORS_EXPOSE_HEADERS = ["Cross-Origin-Opener-Policy"]
 
 INSTALLED_APPS = [
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist', 
     'chat',
     'service',
     'payment',
