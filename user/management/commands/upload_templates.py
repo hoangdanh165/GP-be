@@ -4,7 +4,7 @@ import boto3
 from django.conf import settings
 
 class Command(BaseCommand):
-    help = 'Upload Django templates to S3'
+    help = 'Upload templates to S3'
 
     def handle(self, *args, **kwargs):
         # Cấu hình thông tin S3
@@ -16,13 +16,12 @@ class Command(BaseCommand):
         )
 
         bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-        folder_name = 'templates'  # Thư mục trên S3 để lưu trữ templates
-        local_template_dir = 'user/templates'  # Đường dẫn tới thư mục template trên local
+        folder_name = 'templates' 
+        local_template_dir = 'user/templates'
 
-        # Duyệt qua các tệp template và upload chúng lên S3
         for root, dirs, files in os.walk(local_template_dir):
             for file in files:
                 file_path = os.path.join(root, file)
-                s3_file_path = os.path.relpath(file_path, local_template_dir)  # Đường dẫn trên S3
+                s3_file_path = os.path.relpath(file_path, local_template_dir)
                 s3_client.upload_file(file_path, bucket_name, f'{folder_name}/{s3_file_path}')
                 self.stdout.write(self.style.SUCCESS(f'Successfully uploaded {file_path} to {folder_name}/{s3_file_path}'))

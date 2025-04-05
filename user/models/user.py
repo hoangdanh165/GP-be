@@ -4,11 +4,14 @@ from .role import Role
 from user.managers import UserManager
 from django.contrib.auth.models import PermissionsMixin
 import uuid
+from django.conf import settings
+from django.utils import timezone
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     class Status(models.IntegerChoices):
         ACTIVE = 1, 'Active'
-        BANNED = 2, 'Banned'
+        BANNED = 0, 'Banned'
         
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     google_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
@@ -41,15 +44,25 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = 'user'
 
+    def get_create_at(self):
+        if self.create_at:
+            localized_time = timezone.localtime(self.create_at)
+            return localized_time
+        return None
+
     def get_full_name(self):
         return self.full_name
     
     def get_role(self):
         return self.role.name
     
+    def get_status(self):
+        return self.get_status_display()
+    
     def get_avatar(self):
-        if self.avatar:
-            return self.avatar.url
-        elif self.avatar_url:
-            return self.avatar_url 
-        return "/static/default-avatar.jng"
+        if self.google_id:
+            return self.avatar_url
+        else:
+            if self.avatar:
+                return self.avatar.url
+            return settings.MEDIA_URL + 'default-avatar.jpg'

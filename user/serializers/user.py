@@ -13,13 +13,15 @@ from ..models.role import Role
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
-    role = RoleSerializer(read_only=True)
-
+    role = serializers.CharField(source="get_role")
+    avatar = serializers.CharField(source="get_avatar")
+    create_at = serializers.CharField(source="get_create_at")
     class Meta:
         model = User
         fields = [
             'id', 
             'full_name',
+            'avatar',
             'email', 
             'password', 
             'phone', 
@@ -27,6 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role',
             'status',
             'email_verified',
+            'create_at',
         ]
         extra_kwargs = {
             'password': {'write_only': True}  
@@ -36,7 +39,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def validate_password(self, value):
         if len(value) < 8:
-            raise ValidationError("Mật khẩu phải có độ dài tối thiểu là 8 ký tự.")
+            raise ValidationError("Password must have at least 8 characters.")
         return value
 
     
@@ -45,10 +48,10 @@ class UserSerializer(serializers.ModelSerializer):
         password = attrs.get("password", None)
         
         if email is None:
-            raise ValidationError({"error": "email is missing"})
+            raise ValidationError({"error": "Email is missing."})
         
         if password is None:
-            raise ValidationError({"error": "password is missing"})
+            raise ValidationError({"error": "Password is missing."})
         
         return attrs
         
@@ -67,14 +70,13 @@ class UserAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'status', 'avatar_url', 'email_verified', 'role', 'password']
+        fields = ['id', 'full_name', 'address', 'email', 'phone', 'status', 'avatar_url', 'email_verified', 'role', 'password']
         read_only_fields = ['id', 'avatar_url']
 
     def get_status(self, obj):
         status_dict = {
             1: 'ACTIVE',
             2: 'BLOCKED',
-            3: 'INVITED',
         }
         return status_dict.get(obj.status, 'Unknown') 
     

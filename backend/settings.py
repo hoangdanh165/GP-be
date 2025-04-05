@@ -1,8 +1,11 @@
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+import base64
+import tempfile
 import os
 from corsheaders.defaults import default_headers
+from google.oauth2 import service_account
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -124,7 +127,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # LANGUAGE & TIMEZONE
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Ho_Chi_Minh'
 
 USE_I18N = True
 
@@ -161,46 +164,79 @@ SINCH_PHONE_NUMBER = os.environ.get('SINCH_PHONE_NUMBER')
 SINCH_SMS_URL = os.environ.get('SINCH_SMS_URL')
 
 # AWS BUCKET
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
-AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = None
-AWS_S3_VERIFY = True
+# AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+# AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+# AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+# AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME')
+# AWS_S3_FILE_OVERWRITE = False
+# AWS_DEFAULT_ACL = None
+# AWS_S3_VERIFY = True
 
-AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
+# AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com'
 
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
-STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
-TEMPLATES_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/templates/'
+# MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+# STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+# TEMPLATES_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/templates/'
+
+# GOOGLE BUCKET
+GS_CREDENTIALS_BASE64 = os.getenv("GS_CREDENTIALS_BASE64")
+
+if GS_CREDENTIALS_BASE64:
+    decoded_key = base64.b64decode(GS_CREDENTIALS_BASE64)
+    
+    # Tạo file tạm
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
+    temp_file.write(decoded_key)
+    temp_file.flush()
+    temp_file_name = temp_file.name
+    
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = temp_file_name
+
+    GS_CREDENTIALS = service_account.Credentials.from_service_account_file(temp_file_name)
+
+GS_BUCKET_NAME = "prestige-auto-bucket"
+GS_DEFAULT_ACL = "publicRead" 
+STATICFILES_LOCATION = "static" 
+MEDIAFILES_LOCATION = "media" 
+STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/{STATICFILES_LOCATION}/"
+MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/{MEDIAFILES_LOCATION}/"
 
 
 STORAGES = {
+
     "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {
-            "bucket_name": AWS_STORAGE_BUCKET_NAME,
-            "access_key": AWS_ACCESS_KEY_ID,
-            "secret_key": AWS_SECRET_ACCESS_KEY,
-            "region_name": AWS_S3_REGION_NAME,
-            "file_overwrite": AWS_S3_FILE_OVERWRITE,
-            "default_acl": AWS_DEFAULT_ACL,
-            "verify": AWS_S3_VERIFY,
-        },
+        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
     },
+    
     "staticfiles": {
-        "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
-        "OPTIONS": {
-            "bucket_name": AWS_STORAGE_BUCKET_NAME,
-            "access_key": AWS_ACCESS_KEY_ID,
-            "secret_key": AWS_SECRET_ACCESS_KEY,
-            "region_name": AWS_S3_REGION_NAME,
-            "file_overwrite": AWS_S3_FILE_OVERWRITE,
-            "default_acl": AWS_DEFAULT_ACL,
-            "verify": AWS_S3_VERIFY,
-        },
+        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
     },
+
+    # "default": {
+    #     "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    #     "OPTIONS": {
+    #         "bucket_name": AWS_STORAGE_BUCKET_NAME,
+    #         "access_key": AWS_ACCESS_KEY_ID,
+    #         "secret_key": AWS_SECRET_ACCESS_KEY,
+    #         "region_name": AWS_S3_REGION_NAME,
+    #         "file_overwrite": AWS_S3_FILE_OVERWRITE,
+    #         "default_acl": AWS_DEFAULT_ACL,
+    #         "verify": AWS_S3_VERIFY,
+    #     },
+    # },
+
+    # "staticfiles": {
+    #     "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+    #     "OPTIONS": {
+    #         "bucket_name": AWS_STORAGE_BUCKET_NAME,
+    #         "access_key": AWS_ACCESS_KEY_ID,
+    #         "secret_key": AWS_SECRET_ACCESS_KEY,
+    #         "region_name": AWS_S3_REGION_NAME,
+    #         "file_overwrite": AWS_S3_FILE_OVERWRITE,
+    #         "default_acl": AWS_DEFAULT_ACL,
+    #         "verify": AWS_S3_VERIFY,
+    #     },
+    # },
 }
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

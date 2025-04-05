@@ -42,7 +42,7 @@ from ..permissions import (
 CLIENT_ID = os.environ.get('CLIENT_ID')
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all().order_by('id')
+    # queryset = User.objects.all().order_by('id')
    
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
@@ -59,24 +59,78 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserAccountSerializer  
         return UserSerializer  
 
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return User.objects.all()
+        return User.objects.filter(id=user.id) 
+    
+    def perform_update(self, serializer):
+        if serializer.instance != self.request.user:
+            return Response({'error': 'You can only update your own account!'}, 
+                            status=status.HTTP_403_FORBIDDEN)
+        serializer.save()
 
-    def patch(self, request, pk, format=None):
+    def perform_destroy(self, instance):
+        if instance != self.request.user:
+            return Response({'error': 'You can only delete your own account!'}, 
+                            status=status.HTTP_403_FORBIDDEN)
+        instance.delete()
+
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated],
+            renderer_classes=[renderers.JSONRenderer])
+    def partial_update_user(self, request, pk=None):
         try:
-            user = User.objects.get(pk=pk)  
+            user = self.get_object()
         except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'User not found!'}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = UserAccountSerializer(user, data=request.data, partial=True)  
+        serializer = UserAccountSerializer(user, data=request.data, partial=True)
 
         if serializer.is_valid():
-            serializer.save()  
-            return Response(serializer.data)  
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'], url_path="create-user", permission_classes=[IsAuthenticated],
+            renderer_classes=[renderers.JSONRenderer])
+    def create_user(self, request, pk=None):
+        data = request.data
+        serializer = UserAccountSerializer(data=data)
+
+        if 'password' not in data or not data['password']:
+            data['password'] = '12345678'
+
+        print(request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            if user:
+                return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+            return Response({'error': 'Failed to create user.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    # def patch(self, request, pk, format=None):
+    #     try:
+    #         user = User.objects.get(pk=pk)  
+    #     except User.DoesNotExist:
+    #         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    #     serializer = UserAccountSerializer(user, data=request.data, partial=True)  
+    
+    #     if serializer.is_valid():
+    #         serializer.save()  
+    #         return Response(serializer.data)  
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
 
     @action(methods=['post'], url_path='sign-up', detail=False, permission_classes=[AllowAny], 
-            renderer_classes=[renderers.JSONRenderer])
+        renderer_classes=[renderers.JSONRenderer])
     def sign_up(self, request):
-        serializer = self.get_serializer(data=request.data)
+        data = request.data.copy()
+
+        if 'role' not in data or not data['role']:
+            data['role'] = {'name': 'customer'}
+
+        serializer = UserAccountSerializer(data=data)
 
         if serializer.is_valid():
             user = serializer.save()
@@ -458,4 +512,11 @@ class UserViewSet(viewsets.ModelViewSet):
         
         serializer = StaffSerializer(staffs, many=True)
         
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(methods=['get'], url_path='get-all', detail=False, permission_classes=[IsAdmin], renderer_classes=[renderers.JSONRenderer])
+    def get_all(self, request):
+        users = User.objects.all()
+        serializer = UserSerializer(users, many=True)
+
         return Response(serializer.data, status=status.HTTP_200_OK)
