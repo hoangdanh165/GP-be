@@ -444,7 +444,7 @@ class UserViewSet(viewsets.ModelViewSet):
         refresh_token = request.COOKIES.get('refreshToken')
 
         if not refresh_token:
-            return Response({"detail": "Refresh token not found"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Refresh token not found"}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
             token = RefreshToken(refresh_token)
@@ -475,7 +475,7 @@ class UserViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_200_OK)
 
         except TokenError:
-            return Response({"detail": "Invalid refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Invalid refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
         
 
     @action(methods=['post'], detail=False, url_path='delete-multiple', permission_classes=[IsAdmin])
