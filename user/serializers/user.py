@@ -12,54 +12,50 @@ from ..models.role import Role
 
 User = get_user_model()
 
+
 class UserSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source="get_role")
     avatar = serializers.CharField(source="get_avatar")
     create_at = serializers.CharField(source="get_create_at")
+
     class Meta:
         model = User
         fields = [
-            'id', 
-            'full_name',
-            'avatar',
-            'email', 
-            'password', 
-            'phone', 
-            'address', 
-            'role',
-            'status',
-            'email_verified',
-            'create_at',
+            "id",
+            "full_name",
+            "avatar",
+            "email",
+            "password",
+            "phone",
+            "address",
+            "role",
+            "status",
+            "email_verified",
+            "create_at",
         ]
-        extra_kwargs = {
-            'password': {'write_only': True}  
-        }
-
-
+        extra_kwargs = {"password": {"write_only": True}}
 
     def validate_password(self, value):
         if len(value) < 8:
             raise ValidationError("Password must have at least 8 characters.")
         return value
 
-    
     def validate(self, attrs):
         email = attrs.get("email", None)
         password = attrs.get("password", None)
-        
+
         if email is None:
             raise ValidationError({"error": "Email is missing."})
-        
+
         if password is None:
             raise ValidationError({"error": "Password is missing."})
-        
+
         return attrs
-        
 
     def create(self, validated_data):
-        validated_data['password'] = make_password(validated_data['password'])  
-        validated_data['status'] = 1
-        validated_data['email_verified'] = False  
+        validated_data["password"] = make_password(validated_data["password"])
+        validated_data["status"] = 1
+        validated_data["email_verified"] = False
         user = User.objects.create(**validated_data)
         return user
 
@@ -70,49 +66,63 @@ class UserAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'address', 'email', 'phone', 'status', 'avatar_url', 'email_verified', 'role', 'password']
-        read_only_fields = ['id', 'avatar_url']
+        fields = [
+            "id",
+            "full_name",
+            "address",
+            "email",
+            "phone",
+            "status",
+            "avatar_url",
+            "email_verified",
+            "role",
+            "password",
+        ]
+        read_only_fields = ["id", "avatar_url"]
 
     def get_status(self, obj):
         status_dict = {
-            1: 'ACTIVE',
-            2: 'BLOCKED',
+            1: "ACTIVE",
+            2: "BLOCKED",
         }
-        return status_dict.get(obj.status, 'Unknown') 
-    
+        return status_dict.get(obj.status, "Unknown")
+
     def update(self, instance, validated_data):
-        role_data = validated_data.get('role')
-        if role_data and 'name' in role_data:
+        role_data = validated_data.get("role")
+        if role_data and "name" in role_data:
             try:
-                role_instance = Role.objects.get(name=role_data['name'])
+                role_instance = Role.objects.get(name=role_data["name"])
                 instance.role = role_instance
             except Role.DoesNotExist:
-                raise serializers.ValidationError(f"Role '{role_data['name']}' does not exist.")
+                raise serializers.ValidationError(
+                    f"Role '{role_data['name']}' does not exist."
+                )
         else:
             instance.role = instance.role
 
-        instance.status = validated_data.get('status', instance.status)
-        instance.email_verified = validated_data.get('email_verified', instance.email_verified)
+        instance.status = validated_data.get("status", instance.status)
+        instance.email_verified = validated_data.get(
+            "email_verified", instance.email_verified
+        )
         instance.save()
-                
-        return instance 
-    
+
+        return instance
+
     def create(self, validated_data):
-        role_data = validated_data.pop('role', None)
-        if role_data and 'name' in role_data:
+        role_data = validated_data.pop("role", None)
+        if role_data and "name" in role_data:
             try:
-                role_instance = Role.objects.get(name=role_data['name'])
+                role_instance = Role.objects.get(name=role_data["name"])
             except Role.DoesNotExist:
-                raise serializers.ValidationError(f"Role '{role_data['name']}' does not exist.")
+                raise serializers.ValidationError(
+                    f"Role '{role_data['name']}' does not exist."
+                )
         else:
             role_instance = None
-        
-        password = validated_data.pop('password', None)
 
-        user = User.objects.create(
-            role=role_instance,
-            **validated_data
-        )
+        password = validated_data.pop("password", None)
+
+        user = User.objects.create(role=role_instance, **validated_data)
 
         if password:
             user.set_password(password)
@@ -120,21 +130,28 @@ class UserAccountSerializer(serializers.ModelSerializer):
 
         return user
 
-    
 
-    
 class UserInfoSerializer(serializers.ModelSerializer):
+    avatar = serializers.CharField(source="get_avatar")
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'phone', 'status', 
-                  'email_verified', 'avatar_url']
-    
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "phone",
+            "status",
+            "email_verified",
+            "avatar",
+        ]
+
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['phone', 'avatar_url', 'email']
+        fields = ["phone", "avatar_url", "email"]
+
 
 class StaffSerializer(serializers.ModelSerializer):
     avatar = serializers.CharField(source="get_avatar")
@@ -144,10 +161,10 @@ class StaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id',
-            'full_name',
-            'avatar',
-            'email',
-            'role',
-            'had_conversation',
+            "id",
+            "full_name",
+            "avatar",
+            "email",
+            "role",
+            "had_conversation",
         ]

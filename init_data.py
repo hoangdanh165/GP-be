@@ -21,6 +21,7 @@ from chat.models.message import Message
 from service.models.service import Service
 from service.models.appointment import Appointment
 from service.models.appointment_service import AppointmentService
+from service.models.category import Category
 
 fake = Faker()
 User = get_user_model()
@@ -133,45 +134,110 @@ def create_conversations():
     print(f"Created conversations!")
 
 
-def create_services():
-    service_names = [
-        "Car Wash",
+SERVICE_GROUPS = {
+    "MAINTENANCE": [
         "Oil Change",
         "Tire Rotation",
         "Brake Inspection",
+        "Fluid Flush",
+        "Timing Belt Replacement",
+        "Wheel Alignment",
+    ],
+    "REPAIR": [
         "Engine Tune-up",
         "Battery Replacement",
-        "Air Conditioning Service",
         "Transmission Repair",
-        "Fluid Flush",
-        "Car Detailing",
-        "Window Tinting",
-        "Fuel System Cleaning",
-        "Clutch Replacement",
         "Suspension Repair",
         "Exhaust System Repair",
-        "Wheel Alignment",
-        "Timing Belt Replacement",
+        "Clutch Replacement",
         "Fuel Pump Repair",
-        "Pre-purchase Inspection",
-        "Paint Protection",
+    ],
+    "CARE": [
+        "Car Wash",
+        "Car Detailing",
+        "Air Conditioning Service",
         "Ceramic Coating",
-    ]
+        "Paint Protection",
+    ],
+    "UPGRADE": [
+        "Window Tinting",
+        "Sound System Upgrade",
+        "Body Kit Installation",
+        "LED Headlight Upgrade",
+        "Dashcam Installation",
+    ],
+    "INSPECTION": [
+        "Pre-purchase Inspection",
+        "General Vehicle Inspection",
+        "Emissions Testing",
+    ],
+    "EXTRA": [
+        "Vehicle Pickup & Delivery",
+        "Roadside Assistance",
+        "Registration Renewal",
+    ],
+}
 
-    services = []
-    for sn in service_names:
-        service = Service.objects.create(
-            name=sn,
-            description=fake.text(),
-            price=random.uniform(20, 200),
-            duration=timedelta(hours=random.randint(1, 3)),
+
+def create_service_categories():
+    for key in SERVICE_GROUPS.keys():
+        category, _ = Category.objects.get_or_create(
+            name=key.capitalize(),
+            description=f"{key.capitalize()} related services",
         )
-        services.append(service)
-    return services
+
+        print(f"✅ Created/Found category: {category.name}")
+
+
+def create_services():
+    categories = {
+        category.name.upper(): category for category in Category.objects.all()
+    }
+    services = []
+
+    for category_key, names in SERVICE_GROUPS.items():
+        category = categories.get(category_key)
+        if not category:
+            print(f"❌ Category '{category_key}' not found in DB.")
+            continue
+
+        for name in names:
+            if category_key == "MAINTENANCE":
+                price = random.uniform(30, 100)
+                duration = timedelta(hours=random.randint(1, 2))
+            elif category_key == "REPAIR":
+                price = random.uniform(100, 400)
+                duration = timedelta(hours=random.randint(2, 4))
+            elif category_key == "CARE":
+                price = random.uniform(20, 150)
+                duration = timedelta(hours=random.randint(1, 3))
+            elif category_key == "UPGRADE":
+                price = random.uniform(50, 300)
+                duration = timedelta(hours=random.randint(2, 5))
+            elif category_key == "INSPECTION":
+                price = random.uniform(30, 80)
+                duration = timedelta(hours=1)
+            elif category_key == "EXTRA":
+                price = random.uniform(20, 60)
+                duration = timedelta(hours=1)
+
+            service = Service.objects.create(
+                name=name,
+                description=fake.sentence(nb_words=12),
+                price=round(price, 2),
+                estimated_duration=duration,
+                category=category,
+            )
+            services.append(service)
+
+            print(
+                f"🛠️ Created service: {name} | Price: ${round(price, 2)} | Duration: {duration}"
+            )
+    print("🎉 All services created successfully!")
 
 
 def generate_license_plate():
-    """Tạo biển số xe ngẫu nhiên theo định dạng ZZ-Y XXX.XX"""
+    """Tạo biển số xe ngẫu nhiên theo định dạng ZZY XXX.XX"""
     ma_vung = random.choice(
         [
             "11",
@@ -235,7 +301,7 @@ def generate_license_plate():
     so3 = random.randint(0, 9)
     so4 = random.randint(0, 9)
     so5 = random.randint(0, 9)
-    return f"{ma_vung}-{chu_cai} {so1}{so2}{so3}.{so4}{so5}"
+    return f"{ma_vung}{chu_cai} {so1}{so2}{so3}.{so4}{so5}"
 
 
 def create_appointments(n=10):
@@ -355,7 +421,7 @@ if __name__ == "__main__":
     # create_roles()
     # create_users()
     # create_conversations()
-
-    # create_services()
+    create_service_categories()
+    create_services()
     create_appointments(10)
     print("Fake data created successfully!")
