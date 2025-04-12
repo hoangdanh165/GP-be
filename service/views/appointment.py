@@ -12,7 +12,11 @@ from django.conf import settings
 from django.utils import timezone
 from base.utils.custom_pagination import CustomPagination
 from ..models.appointment import Appointment
-from ..serializers.appointment import AppointmentSerializer, AppointmentDetailSerializer
+from ..serializers.appointment import (
+    AppointmentSerializer,
+    AppointmentDetailSerializer,
+    AppointmentUpdateSerializer,
+)
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -33,6 +37,34 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         except Appointment.DoesNotExist:
             return Response(
                 {"detail": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(
+        methods=["put"],
+        url_path="update",
+        detail=True,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def manual_update(self, request, pk=None):
+        try:
+            appointment = get_object_or_404(Appointment, pk=pk)
+            serializer = AppointmentUpdateSerializer(
+                appointment, data=request.data, partial=True
+            )
+            if serializer.is_valid():
+                serializer.save()
+                return Response(
+                    {
+                        "detail": "Appointment updated successfully!",
+                        "data": serializer.data,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Appointment.DoesNotExist:
+            return Response(
+                {"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND
             )
 
     @action(

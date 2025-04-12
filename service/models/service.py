@@ -23,7 +23,7 @@ class Service(models.Model):
     )
 
     discount = models.DecimalField(
-        max_digits=3, decimal_places=2, null=True, blank=True, default=0.00
+        max_digits=5, decimal_places=2, null=True, blank=True, default=0.00
     )
     discount_from = models.DateTimeField(null=True, blank=True)
     discount_to = models.DateTimeField(null=True, blank=True)

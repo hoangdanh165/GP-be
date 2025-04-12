@@ -13,4 +13,5 @@ urlpatterns = [
     path("", include("user.urls")),
     path("", include("chat.urls")),
     path("", include("service.urls")),
+    path("", include("notification.urls")),
 ]

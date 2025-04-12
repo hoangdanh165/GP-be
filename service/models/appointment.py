@@ -21,7 +21,8 @@ class Appointment(models.Model):
 
     note = models.TextField(null=True, blank=True)
     date = models.DateTimeField()
-    estimated_end_time = models.DateTimeField(null=True, blank=True)
+    vehicle_ready_time = models.DateTimeField(null=True, blank=True)
+    pickup_time = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(
         max_length=10, choices=StatusChoices.choices, default=StatusChoices.PENDING
@@ -32,6 +33,7 @@ class Appointment(models.Model):
     )
 
     create_at = models.DateTimeField(default=timezone.now)
+    update_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Appointment {self.id} - {self.status}"
@@ -42,15 +44,21 @@ class Appointment(models.Model):
             return localized_time
         return None
 
-    def get_estimated_end_time(self):
+    def get_vehicle_ready_time(self):
         if self.date:
-            localized_time = timezone.localtime(self.estimated_end_time)
+            localized_time = timezone.localtime(self.vehicle_ready_time)
             return localized_time
         return None
 
     def get_create_at(self):
         if self.create_at:
             localized_time = timezone.localtime(self.create_at)
+            return localized_time
+        return None
+
+    def get_update_at(self):
+        if self.date:
+            localized_time = timezone.localtime(self.update_at)
             return localized_time
         return None
 

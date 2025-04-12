@@ -22,6 +22,8 @@ from service.models.service import Service
 from service.models.appointment import Appointment
 from service.models.appointment_service import AppointmentService
 from service.models.category import Category
+from notification.models.notification import Notification
+from notification.models.notification_user import NotificationUser
 
 fake = Faker()
 User = get_user_model()
@@ -57,16 +59,17 @@ def create_users():
     admin_role = Role.objects.filter(name="admin").first()
     customer_role = Role.objects.filter(name="customer").first()
 
-    # for email in emails:
-    #     admin_user = User.objects.create_user(
-    #         email=email,
-    #         password='12345678',
-    #         is_staff=True,
-    #         is_superuser=True,
-    #         role=admin_role
-    #     )
-    #     admin_user.save()
-    #     print(f"Created admin user: {email}")
+    for email in emails:
+        admin_user = User.objects.create_user(
+            full_name="ADMINISTRATOR",
+            email=email,
+            password="12345678",
+            is_staff=True,
+            is_superuser=True,
+            role=admin_role,
+        )
+        admin_user.save()
+        print(f"Created admin user: {email}")
 
     for email in emails_customer:
         customer_user = User.objects.create_user(
@@ -370,7 +373,7 @@ def create_appointments(n=10):
                 duration_minutes = service.estimated_duration.total_seconds() / 60
                 total_duration += timedelta(minutes=duration_minutes)
 
-        estimated_end_time = date + total_duration
+        vehicle_ready_time = date + total_duration
 
         # Fake data for vehicle_information
         brand = random.choice(car_brands)
@@ -393,7 +396,7 @@ def create_appointments(n=10):
         appointment = Appointment.objects.create(
             customer=customer,
             date=date,
-            estimated_end_time=estimated_end_time,
+            vehicle_ready_time=vehicle_ready_time,
             status=random.choice(["pending", "confirmed", "completed", "cancelled"]),
             total_price=0,
             title=f"{customer.full_name}",
@@ -417,11 +420,31 @@ def create_appointments(n=10):
         )
 
 
+def create_notifications(num_notifications):
+    for _ in range(num_notifications):
+        notification = Notification.objects.create(
+            message=fake.sentence(),
+            params={"key": fake.word()},
+            create_url=fake.url(),
+        )
+
+        users = User.objects.all()
+        for user in users:
+            NotificationUser.objects.create(
+                notification=notification,
+                user=user,
+                is_read=fake.boolean(),
+                create_at=timezone.now(),
+            )
+        print(f"Created notification number {_}")
+
+
 if __name__ == "__main__":
     # create_roles()
     # create_users()
     # create_conversations()
-    create_service_categories()
-    create_services()
+    # create_service_categories()
+    # create_services()
     create_appointments(10)
+    create_notifications(50)
     print("Fake data created successfully!")
