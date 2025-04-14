@@ -12,11 +12,13 @@ from django.conf import settings
 from django.utils import timezone
 from base.utils.custom_pagination import CustomPagination
 from ..models.appointment import Appointment
+from ..models.appointment_service import AppointmentService
 from ..serializers.appointment import (
     AppointmentSerializer,
     AppointmentDetailSerializer,
     AppointmentUpdateSerializer,
 )
+from ..services.appoinment import send_appointment_reminder_email
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -82,4 +84,95 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         except Appointment.DoesNotExist:
             return Response(
                 {"error": "Appointment not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(
+        methods=["post"],
+        url_path="create-reminder",
+        detail=False,
+        permission_classes=[AllowAny],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def create_reminder(self, request):
+        appointment_id = request.data.get("id")
+        type = request.data.get("type")
+        reminder_type = request.data.get("reminder_type")
+
+        if not appointment_id or not reminder_type:
+            return Response(
+                {"error": "Missing required parameters: id and reminder_type"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment = get_object_or_404(Appointment, id=appointment_id)
+
+        user = appointment.customer
+
+        appointment_time = appointment.get_date().strftime(
+            "%I:%M %p, %B %d, %Y"
+        )  # 3:30 PM, April 15, 2025
+
+        appointment_services = AppointmentService.objects.filter(
+            appointment=appointment
+        )
+
+        services = (
+            ", ".join(
+                [
+                    appointment_service.service.name
+                    for appointment_service in appointment_services
+                ]
+            )
+            or "General maintenance and more."
+        )
+
+        REMINDER_CONFIG = {
+            "APPOINTMENT_REMINDER_1H": {
+                "field": "reminded_before_1h",
+                "email_params": {
+                    "template": "service/email/appointment_reminder_1h.html",
+                    "user": user,
+                    "appointment_time": appointment_time,
+                    "services": services,
+                },
+                "success_message": "1-hour reminder email sent successfully",
+            },
+            "APPOINTMENT_REMINDER_1D": {
+                "field": "reminded_before_1d",
+                "email_params": {
+                    "template": "service/email/appointment_reminder_1d.html",
+                    "user": user,
+                    "appointment_time": appointment_time,
+                    "services": services,
+                },
+                "success_message": "1-day reminder email sent successfully",
+            },
+        }
+
+        config = REMINDER_CONFIG.get(reminder_type)
+        if not config:
+            return Response(
+                {"error": f"Unsupported reminder_type: {reminder_type}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if getattr(appointment, config["field"]):
+            return Response(
+                {"error": f"{reminder_type} already sent for this appointment"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            send_appointment_reminder_email(**config["email_params"])
+
+            setattr(appointment, config["field"], True)
+            appointment.save(update_fields=[config["field"]])
+
+            return Response(
+                {"message": config["success_message"]}, status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to send email: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

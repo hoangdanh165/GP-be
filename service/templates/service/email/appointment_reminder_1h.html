@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Appointment Reminder</title>
+    <!-- Load TailwindCSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 font-sans">
+    <div class="max-w-2xl mx-auto bg-white p-8 mt-10 rounded-lg shadow-lg">
+        <!-- Logo or Banner -->
+        <div class="text-center mb-6">
+            <img src="https://via.placeholder.com/150x50?text=Prestige+Auto+Garage" alt="Prestige Auto Garage Logo"
+                class="mx-auto">
+        </div>
+
+        <!-- Subject -->
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">
+            [Prestige Auto Garage] One Hour Until Your Appointment!
+        </h1>
+
+        <!-- Greeting -->
+        <p class="text-lg text-gray-700 mb-4">
+            Dear {{ customer_name }},
+        </p>
+
+        <!-- Main Content -->
+        <div class="mb-6">
+            <p class="text-gray-700 mb-4">
+                Your vehicle service appointment at Prestige Auto Garage is just <strong>one hour away</strong>! Please
+                prepare to bring your vehicle to our garage on time to ensure a smooth service experience.
+            </p>
+            <p class="text-gray-700 mb-2">Here are the details:</p>
+            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                <li><span class="font-semibold">⏰ Time:</span> {{ appointment_time }}</li>
+                <li><span class="font-semibold">📍 Location:</span> Prestige Auto Garage - 123 Nguyen Luong Bang Street,
+                    Garage District, Da Nang City</li>
+                <li><span class="font-semibold">🛠️ Services:</span> {{ services }}</li>
+            </ul>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="mb-6 text-center">
+            <p class="text-gray-700 mb-4">
+                Confirm your attendance or let us know if you need to reschedule. We’re ready to serve you!
+            </p>
+            <!-- <a href="{{ confirmation_link }}"
+                class="inline-block bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">
+                Confirm Appointment
+            </a> -->
+        </div>
+
+        <!-- Contact Information -->
+        <div class="text-gray-600 text-sm mb-6">
+            <p>If you have any questions, please contact us:</p>
+            <p>📞 Hotline: 0123 456 789</p>
+            <p>📧 Email: support@prestigeautogarage.com</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-sm pt-4 border-t">
+            <p>© 2025 Prestige Auto Garage. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+</html>
