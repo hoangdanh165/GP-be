@@ -699,4 +699,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    
+    @action(
+        methods=["get"],
+        url_path="get-customers",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def get_customers(self, request):
+
+        customers = User.objects.filter(role__name="customer")
+
+        serializer = UserInfoSerializer(customers, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)

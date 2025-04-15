@@ -52,7 +52,9 @@ class AppointmentUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = [
+            "id",
             "date",
+            "title",
             "status",
             "customer",
             "vehicle_ready_time",
@@ -64,7 +66,18 @@ class AppointmentUpdateSerializer(serializers.ModelSerializer):
         ]
 
     def create(self, validated_data):
-        return super().create(validated_data)
+        services_data = validated_data.pop("appointment_services", [])
+
+        appointment = Appointment.objects.create(**validated_data)
+
+        for service_data in services_data:
+            AppointmentService.objects.create(
+                appointment=appointment,
+                service_id=service_data["service"].id,
+                price=service_data["price"],
+            )
+        print(appointment)
+        return appointment
 
     def update(self, instance, validated_data):
         services_data = validated_data.pop("appointment_services", [])
