@@ -19,8 +19,11 @@ from django.contrib.auth.hashers import make_password
 from ..models import UserResetPassword
 from django.utils import timezone
 from ..serializers import UserSerializer, UserResetPasswordSerializer
-from ..serializers.user import UserInfoSerializer
-from ..serializers.user import UserAccountSerializer
+from ..serializers.user import (
+    UserInfoSerializer,
+    UserAccountSerializer,
+    UserProfileSerializer,
+)
 from ..models import User, UserResetPassword
 from base.utils.custom_pagination import CustomPagination
 from ..serializers.user import StaffSerializer
@@ -140,6 +143,39 @@ class UserViewSet(viewsets.ModelViewSet):
     #         serializer.save()
     #         return Response(serializer.data)
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(
+        methods=["put"],
+        url_path="update-profile",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def update_profile(self, request):
+        user = request.user
+
+        user_data = {
+            "phone": request.data.get("phone"),
+            "full_name": request.data.get("fullName"),
+            "address": request.data.get("address"),
+            "email": request.data.get("email"),
+        }
+
+        if (
+            "avatar" in request.data
+            and isinstance(request.data["avatar"], str)
+            and request.data["avatar"].startswith("http")
+        ):
+            user_data["avatar"] = user.avatar
+        else:
+            user_data["avatar"] = request.data.get("avatar")
+
+        serializer = UserProfileSerializer(user, data=user_data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(
         methods=["post"],
@@ -564,7 +600,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 "role": user.role.name,
                 "status": user.status,
                 "avatar": avatar,
-                "fullName": full_name,
+                "fullName": user.full_name,
+                "email": user.email,
+                "address": user.address,
+                "phone": user.get_phone(),
             },
             status=status.HTTP_200_OK,
         )
@@ -604,7 +643,6 @@ class UserViewSet(viewsets.ModelViewSet):
             user = User.objects.get(id=user_id)
 
             avatar = user.avatar
-            full_name = user.full_name
 
             if avatar:
                 avatar = avatar.url
@@ -620,8 +658,10 @@ class UserViewSet(viewsets.ModelViewSet):
                     "role": user.role.name,
                     "avatar": avatar,
                     "status": user.status,
-                    "fullName": full_name,
+                    "fullName": user.full_name,
                     "email": user.email,
+                    "address": user.address,
+                    "phone": user.get_phone(),
                 },
                 status=status.HTTP_200_OK,
             )

@@ -141,6 +141,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
             "full_name",
             "email",
             "phone",
+            "address",
             "status",
             "email_verified",
             "avatar",
@@ -150,7 +151,7 @@ class UserInfoSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["phone", "avatar_url", "email"]
+        fields = ["full_name", "phone", "address", "avatar", "email"]
 
 
 class StaffSerializer(serializers.ModelSerializer):
