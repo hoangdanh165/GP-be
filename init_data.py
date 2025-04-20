@@ -24,6 +24,7 @@ from service.models.appointment_service import AppointmentService
 from service.models.category import Category
 from notification.models.notification import Notification
 from notification.models.notification_user import NotificationUser
+from user.models.car import Car
 
 fake = Faker()
 User = get_user_model()
@@ -307,6 +308,70 @@ def generate_license_plate():
     return f"{ma_vung}{chu_cai} {so1}{so2}{so3}.{so4}{so5}"
 
 
+def generate_vin():
+    """Tạo số VIN (Vehicle Identification Number) ngẫu nhiên 17 ký tự"""
+    characters = "0123456789ABCDEFGHJKLMNPRSTUVWXYZ"
+    vin = "".join(random.choice(characters) for _ in range(17))
+    return vin
+
+
+def generate_car_data():
+    """Tạo dữ liệu ngẫu nhiên cho một xe dựa trên Car model"""
+    car_brands = [
+        "Toyota",
+        "Honda",
+        "Ford",
+        "Hyundai",
+        "Kia",
+        "Mazda",
+        "Mercedes-Benz",
+        "BMW",
+        "Audi",
+    ]
+    car_models = {
+        "Toyota": ["Vios", "Camry", "Fortuner", "Innova"],
+        "Honda": ["City", "Civic", "CR-V", "HR-V"],
+        "Ford": ["Ranger", "Everest", "Focus", "Ecosport"],
+        "Hyundai": ["Grand i10", "Accent", "Elantra", "Tucson"],
+        "Kia": ["Morning", "Cerato", "Seltos", "Sportage"],
+        "Mazda": ["Mazda2", "Mazda3", "CX-5", "CX-8"],
+        "Mercedes-Benz": ["C-Class", "E-Class", "S-Class", "GLC"],
+        "BMW": ["3 Series", "5 Series", "X3", "X5"],
+        "Audi": ["A3", "A4", "Q3", "Q5"],
+    }
+    provinces = [
+        "Hà Nội",
+        "Hồ Chí Minh",
+        "Đà Nẵng",
+        "Hải Phòng",
+        "Cần Thơ",
+        "Huế",
+        "Nha Trang",
+        "Vũng Tàu",
+        "Đà Lạt",
+        "Quy Nhơn",
+    ]
+    colors = ["Đỏ", "Xanh", "Trắng", "Đen", "Bạc", "Xám"]
+    engine_types = ["Xăng", "Dầu", "Điện", "Hybrid"]
+
+    brand = random.choice(car_brands)
+    model = random.choice(car_models[brand])
+    year = random.randint(2010, 2024)
+    odometer = random.randint(5000, 200000)  # Realistic odometer range in km
+
+    return {
+        "name": f"{brand} {model}",
+        "brand": f"{brand}",
+        "color": random.choice(colors),
+        "year": year,
+        "engine_type": random.choice(engine_types),
+        "current_odometer": odometer,
+        "license_plate": generate_license_plate(),
+        "registration_province": random.choice(provinces),
+        "vin": generate_vin(),
+    }
+
+
 def create_appointments(n=10):
     customers = User.objects.filter(role__name="customer")
     services = list(Service.objects.all())
@@ -420,6 +485,35 @@ def create_appointments(n=10):
         )
 
 
+def create_cars_for_customers():
+    customers = User.objects.filter(role__name="customer")
+
+    if not customers.exists():
+        print("Không có user nào với role customer trong DB!")
+        return
+
+    for customer in customers:
+        for _ in range(2):  # Create 2 cars per customer
+            car_data = generate_car_data()
+            car = Car.objects.create(
+                user=customer,
+                name=car_data["name"],
+                brand=car_data["brand"],
+                color=car_data["color"],
+                year=car_data["year"],
+                engine_type=car_data["engine_type"],
+                current_odometer=car_data["current_odometer"],
+                license_plate=car_data["license_plate"],
+                registration_province=car_data["registration_province"],
+                vin=car_data["vin"],
+            )
+            print(
+                f"Created car for {customer.email}: {car.name} | "
+                f"License: {car.license_plate} | Year: {car.year}"
+            )
+    print("All cars created successfully!")
+
+
 def create_notifications(num_notifications):
     for _ in range(num_notifications):
         notification = Notification.objects.create(
@@ -445,6 +539,7 @@ if __name__ == "__main__":
     # create_conversations()
     # create_service_categories()
     # create_services()
-    create_appointments(10)
-    create_notifications(50)
+    create_cars_for_customers()
+    # create_appointments(10)
+    # create_notifications(50)
     print("Fake data created successfully!")

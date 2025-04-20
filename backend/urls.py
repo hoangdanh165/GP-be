@@ -14,4 +14,5 @@ urlpatterns = [
     path("", include("chat.urls")),
     path("", include("service.urls")),
     path("", include("notification.urls")),
+    path("", include("chatbot.urls")),
 ]
