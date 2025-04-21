@@ -25,6 +25,8 @@ from service.models.category import Category
 from notification.models.notification import Notification
 from notification.models.notification_user import NotificationUser
 from user.models.car import Car
+from chatbot.models.chatbot_history import ChatbotHistory
+
 
 fake = Faker()
 User = get_user_model()
@@ -533,13 +535,30 @@ def create_notifications(num_notifications):
         print(f"Created notification number {_}")
 
 
+def create_chatbot_history(num_records=10):
+
+    user_id = "6aeb4985-de56-4523-975a-e37587c319c8"
+    fake_histories = []
+    for _ in range(num_records):
+        history = ChatbotHistory(
+            user_id=user_id,
+            message=fake.sentence(nb_words=10),
+            response=fake.sentence(nb_words=15),
+        )
+        fake_histories.append(history)
+
+    ChatbotHistory.objects.bulk_create(fake_histories)
+    print("Fake chatbot history records created successfully!")
+
+
 if __name__ == "__main__":
     # create_roles()
     # create_users()
     # create_conversations()
     # create_service_categories()
     # create_services()
-    create_cars_for_customers()
+    # create_cars_for_customers()
     # create_appointments(10)
     # create_notifications(50)
+    create_chatbot_history(10)
     print("Fake data created successfully!")

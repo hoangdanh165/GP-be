@@ -11,8 +11,11 @@ class ChatbotHistory(models.Model):
         related_name="chatbot_history",
     )
     message = models.TextField()
-    response = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    is_bot = models.BooleanField(default=False)
+    create_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"ChatbotHistory({self.user}, {self.created_at})"
+
+    class Meta:
+        db_table = "chatbot_history"

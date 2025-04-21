@@ -1,10 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views.chatbot_history import ChatbotHistoryViewSet
+from .views.chatbot import ChatbotViewSet
 
 router = DefaultRouter()
-router.register(r"chatbot-history", ChatbotHistoryViewSet, basename="chatbot-history")
+router.register(r"chatbot", ChatbotViewSet, basename="chatbot")
 
+app_name = "chatbot"
 urlpatterns = [
-    path("", include(router.urls)),
+    path("api/v1/", include(router.urls)),
 ]

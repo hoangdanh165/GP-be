@@ -261,3 +261,11 @@ TEMPLATES = [
         },
     },
 ]
+
+# Redis URL configuration
+REDIS_INTERNAL_URL = os.environ.get("REDIS_INTERNAL_URL")
+REDIS_EXTERNAL_URL = os.environ.get("REDIS_EXTERNAL_URL")
+ENVIRONMENT = os.environ.get("ENVIRONMENT")
+
+# Set REDIS_URL based on ENVIRONMENT
+REDIS_URL = REDIS_INTERNAL_URL if ENVIRONMENT == "production" else REDIS_EXTERNAL_URL
