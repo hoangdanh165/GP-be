@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "user",
     "notification",
     "chatbot",
+    "pgvector",
 ]
 
 

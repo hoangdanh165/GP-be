@@ -56,7 +56,7 @@ def build_contents_from_history(chat_history, new_question):
                 parts=[types.Part.from_text(text=new_question)],
             )
         )
-
+    print(contents)
     return contents
 
 
