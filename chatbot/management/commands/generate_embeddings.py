@@ -13,9 +13,9 @@ class Command(BaseCommand):
             text = f"{service.name}: {service.description}"
             embedding = get_embedding(text)
 
-            ServiceEmbeddings.objects.update_or_create(
-                service=service, defaults={"embedding": embedding}
-            )
+            service.embedding = embedding
+            service.save(update_fields=["embedding"])
+
             self.stdout.write(
                 self.style.SUCCESS(f"Generated embedding for {service.name}")
             )

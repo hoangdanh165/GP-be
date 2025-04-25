@@ -88,21 +88,22 @@ class ChatbotViewSet(viewsets.ModelViewSet):
             user=request.user, message=message, is_bot=False
         )
 
-        cached = get_cached_response(message)
-        if cached:
-            bot_message = ChatbotHistory.objects.create(
-                user=request.user, message=cached, is_bot=True
-            )
-            bot_message_serializer = ChatbotHistorySerializer(bot_message)
-            return Response(bot_message_serializer.data)
+        # cached = get_cached_response(message)
+        # if cached:
+        #     bot_message = ChatbotHistory.objects.create(
+        #         user=request.user, message=cached, is_bot=True
+        #     )
+        #     bot_message_serializer = ChatbotHistorySerializer(bot_message)
+        #     return Response(bot_message_serializer.data)
 
         intent = classify_intent(message)
-
-        if intent in ["consult_service", "pricing"]:
+        print("intenttttttt", intent)
+        if intent in ["services", "pricing"]:
+            print("Intent detected:", intent)
             response = rag_response(message)
         else:
             response = "Sorry I don't understand your request clearly. Please tell me more information!"
-
+        
         # final_response = reflect_response(message, response)
         final_response = response
 

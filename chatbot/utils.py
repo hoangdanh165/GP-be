@@ -30,9 +30,10 @@ def search_similar_services(query, limit=3):
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT service_id, (1 - (embedding <=> CAST(%s AS vector))) AS similarity
-            FROM service_embeddings
-            WHERE (1 - (embedding <=> CAST(%s AS vector))) > %s
+            SELECT s.id, s.name, s.description, s.price, s.estimated_duration, s.discount, s.discount_from, s.discount_to, s.category_id,
+                   (1 - (s.embedding <=> CAST(%s AS vector))) AS similarity
+            FROM service s
+            WHERE (1 - (s.embedding <=> CAST(%s AS vector))) > %s
             ORDER BY similarity DESC
             LIMIT %s
             """,
@@ -40,5 +41,20 @@ def search_similar_services(query, limit=3):
         )
         rows = cursor.fetchall()
 
-    results = [{"service_id": row[0], "similarity": row[1]} for row in rows]
+    results = [
+        {
+            "id": row[0],
+            "name": row[1],
+            "description": row[2],
+            "price": float(row[3]),
+            "estimated_duration": row[4],
+            "discount": row[5],
+            "discount_from": row[6],
+            "discount_to": row[7],
+            "category_id": row[8],
+            "similarity": float(row[9]),
+        }
+        for row in rows
+    ]
+
     return results

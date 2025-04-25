@@ -184,6 +184,38 @@ SERVICE_GROUPS = {
     ],
 }
 
+SERVICE_DESCRIPTIONS = {
+    "Oil Change": "Replace old engine oil with fresh oil and new oil filter to maintain engine health.",
+    "Tire Rotation": "Rotate tires to ensure even wear and extend tire lifespan.",
+    "Brake Inspection": "Check brake pads, rotors, and fluid to ensure safe braking performance.",
+    "Fluid Flush": "Remove and replace old fluids like coolant, brake, and transmission fluid.",
+    "Timing Belt Replacement": "Replace worn timing belt to prevent engine damage.",
+    "Wheel Alignment": "Adjust wheels to manufacturer specs for better handling and tire wear.",
+    "Engine Tune-up": "Optimize engine performance by replacing spark plugs and checking key systems.",
+    "Battery Replacement": "Remove old battery and install a new, fully charged one.",
+    "Transmission Repair": "Diagnose and fix transmission issues to ensure smooth shifting.",
+    "Suspension Repair": "Repair or replace shocks, struts, and other suspension components.",
+    "Exhaust System Repair": "Fix leaks or replace damaged exhaust components to reduce emissions.",
+    "Clutch Replacement": "Replace worn clutch system for smooth gear shifting.",
+    "Fuel Pump Repair": "Repair or replace faulty fuel pump to restore fuel delivery.",
+    "Car Wash": "Exterior cleaning to remove dirt, dust, and grime from your vehicle.",
+    "Car Detailing": "Deep cleaning inside and out for a showroom-quality look.",
+    "Air Conditioning Service": "Inspect and recharge AC system for optimal cooling.",
+    "Ceramic Coating": "Apply long-lasting protective ceramic layer on car paint.",
+    "Paint Protection": "Add a protective film to prevent scratches and UV damage.",
+    "Window Tinting": "Install tint films to block UV rays and improve privacy.",
+    "Sound System Upgrade": "Install new speakers, amps, or subwoofers for better audio.",
+    "Body Kit Installation": "Add custom body parts for enhanced style and aerodynamics.",
+    "LED Headlight Upgrade": "Replace old lights with bright, energy-efficient LED headlights.",
+    "Dashcam Installation": "Install front or dual dash cameras for recording road events.",
+    "Pre-purchase Inspection": "Thorough vehicle check before buying to avoid surprises.",
+    "General Vehicle Inspection": "Full inspection covering safety, engine, and systems.",
+    "Emissions Testing": "Check emissions system to meet environmental regulations.",
+    "Vehicle Pickup & Delivery": "Pickup your vehicle and return it after service.",
+    "Roadside Assistance": "Emergency support for breakdowns, flat tires, and towing.",
+    "Registration Renewal": "Help with renewing your vehicle's registration quickly.",
+}
+
 
 def create_service_categories():
     for key in SERVICE_GROUPS.keys():
@@ -208,6 +240,8 @@ def create_services():
             continue
 
         for name in names:
+            description = SERVICE_DESCRIPTIONS.get(name, "No description available.")
+
             if category_key == "MAINTENANCE":
                 price = random.uniform(30, 100)
                 duration = timedelta(hours=random.randint(1, 2))
@@ -229,7 +263,7 @@ def create_services():
 
             service = Service.objects.create(
                 name=name,
-                description=fake.sentence(nb_words=12),
+                description=description,
                 price=round(price, 2),
                 estimated_duration=duration,
                 category=category,
@@ -555,10 +589,10 @@ if __name__ == "__main__":
     # create_roles()
     # create_users()
     # create_conversations()
-    # create_service_categories()
-    # create_services()
+    create_service_categories()
+    create_services()
     # create_cars_for_customers()
-    # create_appointments(10)
+    create_appointments(10)
     # create_notifications(50)
-    create_chatbot_history(10)
+    # create_chatbot_history(10)
     print("Fake data created successfully!")

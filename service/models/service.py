@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.utils import timezone
 from .category import Category
+from pgvector.django import VectorField
 
 
 class Service(models.Model):
@@ -31,6 +32,8 @@ class Service(models.Model):
     estimated_duration = models.DurationField(null=False, blank=False)
     create_at = models.DateTimeField(default=timezone.now)
     update_at = models.DateTimeField(auto_now=True)
+
+    embedding = VectorField(dimensions=768, null=True, blank=True)
 
     def get_date(self):
         if self.date:
