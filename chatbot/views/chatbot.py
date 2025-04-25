@@ -7,9 +7,15 @@ from ..serializers.chatbot_history import ChatbotHistorySerializer
 from user.permissions import IsCustomer
 from ..services.gemini import ask_gemini
 from ..rag.rag import rag_response
-from ..reflection.reflection import reflect_response
+from ..reflection.reflection import reformulate_query
 from ..cache.cache import get_cached_response, cache_response
 from ..semantic_router.semantic_router import classify_intent
+import redis
+from django.conf import settings
+import json
+
+
+redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 
 class ChatbotViewSet(viewsets.ModelViewSet):
@@ -88,22 +94,31 @@ class ChatbotViewSet(viewsets.ModelViewSet):
             user=request.user, message=message, is_bot=False
         )
 
-        # cached = get_cached_response(message)
-        # if cached:
-        #     bot_message = ChatbotHistory.objects.create(
-        #         user=request.user, message=cached, is_bot=True
-        #     )
-        #     bot_message_serializer = ChatbotHistorySerializer(bot_message)
-        #     return Response(bot_message_serializer.data)
+        cached = get_cached_response(message)
+        if cached:
+            bot_message = ChatbotHistory.objects.create(
+                user=request.user, message=cached, is_bot=True
+            )
+            bot_message_serializer = ChatbotHistorySerializer(bot_message)
+            return Response(bot_message_serializer.data)
 
         intent = classify_intent(message)
-        print("intenttttttt", intent)
-        if intent in ["services", "pricing"]:
+
+        reflected_query = reformulate_query(message, user_id=request.user.id)
+
+        if intent in ["services"]:
             print("Intent detected:", intent)
-            response = rag_response(message)
+
+            print("REFLECTED_QUERY: ", reflected_query)
+            response = rag_response(reflected_query)
+
+        elif intent in ["all_services"]:
+            print("Intent detected:", intent)
+            response = rag_response(reflected_query, all_services=True)
+            pass
         else:
             response = "Sorry I don't understand your request clearly. Please tell me more information!"
-        
+
         # final_response = reflect_response(message, response)
         final_response = response
 
@@ -112,5 +127,14 @@ class ChatbotViewSet(viewsets.ModelViewSet):
         bot_message = ChatbotHistory.objects.create(
             user=request.user, message=final_response, is_bot=True
         )
+
+        cache_key = f"chat_history:{request.user.id}"
+        cache_ttl = 3600
+
+        new_entry = {"is_bot": True, "message": final_response}
+        redis_client.rpush(cache_key, json.dumps(new_entry))
+        redis_client.expire(cache_key, cache_ttl)
+
         bot_message_serializer = ChatbotHistorySerializer(bot_message)
+
         return Response(bot_message_serializer.data)

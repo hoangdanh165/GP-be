@@ -1,6 +1,8 @@
 from ..services.gemini_client_test import get_gemini_response
 from ..utils import search_similar_services
 from datetime import datetime, timedelta
+from django.core.exceptions import ObjectDoesNotExist
+from service.models.service import Service
 
 
 def format_duration(duration: timedelta) -> str:
@@ -27,12 +29,50 @@ def format_discount(
     return "None"
 
 
-def rag_response(query):
-    services = search_similar_services(query)
-    print("services: ", services)
+def rag_response(query, all_services=False):
+
+    if all_services:
+        try:
+            services = Service.objects.all().values(
+                "name",
+                "description",
+                "price",
+                "estimated_duration",
+                "discount",
+                "discount_from",
+                "discount_to",
+                "category_id",
+            )
+            services = [
+                {
+                    "name": service["name"],
+                    "description": service["description"],
+                    "price": float(service["price"]),
+                    "estimated_duration": service["estimated_duration"],
+                    "discount": (
+                        float(service["discount"]) if service["discount"] else 0.0
+                    ),
+                    "discount_from": service["discount_from"],
+                    "discount_to": service["discount_to"],
+                    "category_id": service["category_id"],
+                }
+                for service in services
+            ]
+            print(f"Retrieved {len(services)} services from Service.objects.all()")
+        except ObjectDoesNotExist:
+            print("No services found in database")
+            services = []
+    else:
+        services = search_similar_services(query)
+        print("services: ", services)
+
+    if not services:
+        print(f"No services available for query: {query}")
+        return "Sorry, we couldn't find any services matching your request. Please try a different query or contact us for more information."
 
     # Create context for gemini from services
     context_lines = ["Available Services:"]
+
     for idx, service in enumerate(services, 1):
         context_lines.append(f"{idx}. {service['name']}")
         context_lines.append(f"   - Description: {service['description']}")
@@ -44,20 +84,29 @@ def rag_response(query):
             f"   - Discount: {format_discount(service['discount'], service['discount_from'], service['discount_to'])}"
         )
         context_lines.append(f"   - Category ID: {service['category_id']}")
-        context_lines.append(f"   - Similarity Score: {service['similarity']:.2f}")
+        if "similarity" in service:
+            context_lines.append(f"   - Similarity Score: {service['similarity']:.2f}")
         context_lines.append("")
 
     context = "\n".join(context_lines)
     print("context: ", context)
 
-    # Create prompt for Gemini
+    # Create enhanced prompt for Gemini
     prompt = f"""
-    You are an assistant for Prestige Auto Garage. Based on the following information and the user's question, provide a professional response:
-    Service information:
-    {context}
-    
-    Question: {query}
+        You are a friendly and professional assistant for Prestige Auto Garage. Your goal is to provide a conversational and helpful response to the user's question, using the provided service information as context. Follow these guidelines:
+        - Anser the user's question in there language.
+        - Answer the user's question directly and concisely, focusing on their intent.
+        - Use a natural, engaging tone as if you were speaking to a customer in person.
+        - Incorporate relevant details from the service information (e.g., price, duration, description) in a seamless way, without listing them like a database entry.
+        - If the question is broad or vague, provide a brief overview of the most relevant service and its benefits.
+        - Avoid repeating the service description verbatim; instead, paraphrase or summarize it to fit the response.
+        - If applicable, suggest related services or add value by explaining why the service is beneficial.
+        - If service information is too long, summarize the key points and provide a concise answer.
+        
+        Service information:
+        {context}
+
+        Question: {query}
     """
 
-    print("PROMPT: ", prompt)
     return get_gemini_response(prompt)

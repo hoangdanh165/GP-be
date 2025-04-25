@@ -1,7 +1,7 @@
 from ..services.gemini_client_test import get_embedding
 import numpy as np
 from .route import Route
-from .samples import service_samples
+from .samples import service_samples, all_service_samples
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
 
@@ -10,12 +10,15 @@ logger = logging.getLogger(__name__)
 
 # Route name
 SERVICE_ROUTE_NAME = "services"
+ALL_SERVICE_ROUTE_NAME = "all_services"
 
 # Route
 service_route = Route(name=SERVICE_ROUTE_NAME, samples=service_samples)
+all_service_route = Route(name=ALL_SERVICE_ROUTE_NAME, samples=all_service_samples)
 
 ROUTES = {
-    SERVICE_ROUTE_NAME: service_samples
+    SERVICE_ROUTE_NAME: service_samples,
+    ALL_SERVICE_ROUTE_NAME: all_service_samples,
     # "pricing_inquiry": pricing_samples,
     # "booking_inquiry": booking_samples
 }
@@ -57,16 +60,16 @@ def classify_intent(query: str, similarity_threshold: float = 0.7) -> str:
     max_similarity = -1.0
     selected_intent = "unknown"
 
-    for intent, examples in ROUTES.items():
-        for example in examples:
+    for intent, samples in ROUTES.items():
+        for samples in samples:
 
-            example_embedding = embedding_cache.get(example)
+            samples_embedding = embedding_cache.get(samples)
 
-            if example_embedding is None:
+            if samples_embedding is None:
                 continue
 
             similarity = cosine_similarity(
-                query_embedding.reshape(1, -1), example_embedding.reshape(1, -1)
+                query_embedding.reshape(1, -1), samples_embedding.reshape(1, -1)
             )[0][0]
 
             if similarity > max_similarity:

@@ -10,28 +10,23 @@ def get_supabase_client():
     return create_client(url, key)
 
 
-# def search_similar_services(query, limit=3):
-#     supabase = get_supabase_client()
-#     query_embedding = get_embedding(query)
-#     result = supabase.rpc(
-#         "match_service_embeddings",
-#         {
-#             "query_embedding": query_embedding,
-#             "match_threshold": 0.8,
-#             "match_count": limit,
-#         },
-#     ).execute()
-#     return result.data
-
-
 def search_similar_services(query, limit=3):
     query_embedding = get_embedding(query)
 
     with connection.cursor() as cursor:
         cursor.execute(
             """
-            SELECT s.id, s.name, s.description, s.price, s.estimated_duration, s.discount, s.discount_from, s.discount_to, s.category_id,
-                   (1 - (s.embedding <=> CAST(%s AS vector))) AS similarity
+            SELECT 
+                s.id, 
+                s.name, 
+                s.description, 
+                s.price, 
+                s.estimated_duration, 
+                s.discount, 
+                s.discount_from, 
+                s.discount_to, 
+                s.category_id,
+                (1 - (s.embedding <=> CAST(%s AS vector))) AS similarity
             FROM service s
             WHERE (1 - (s.embedding <=> CAST(%s AS vector))) > %s
             ORDER BY similarity DESC
@@ -57,4 +52,19 @@ def search_similar_services(query, limit=3):
         for row in rows
     ]
 
+    print("results: ", results)
     return results
+
+
+# def search_similar_services(query, limit=3):
+#     supabase = get_supabase_client()
+#     query_embedding = get_embedding(query)
+#     result = supabase.rpc(
+#         "match_service_embeddings",
+#         {
+#             "query_embedding": query_embedding,
+#             "match_threshold": 0.8,
+#             "match_count": limit,
+#         },
+#     ).execute()
+#     return result.data
