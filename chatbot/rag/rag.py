@@ -3,6 +3,7 @@ from ..utils import search_similar_services
 from datetime import datetime, timedelta
 from django.core.exceptions import ObjectDoesNotExist
 from service.models.service import Service
+import pytz
 
 
 def format_duration(duration: timedelta) -> str:
@@ -23,8 +24,14 @@ def format_discount(
     discount: float, discount_from: datetime, discount_to: datetime
 ) -> str:
     if discount and float(discount) > 0:
-        from_str = discount_from.strftime("%Y-%m-%d %H:%M") if discount_from else "N/A"
-        to_str = discount_to.strftime("%Y-%m-%d %H:%M") if discount_to else "N/A"
+        vn_tz = pytz.timezone("Asia/Ho_Chi_Minh")
+
+        from_vn = discount_from.astimezone(vn_tz) if discount_from else None
+        to_vn = discount_to.astimezone(vn_tz) if discount_to else None
+
+        from_str = from_vn.strftime("%Y-%m-%d %H:%M") if from_vn else "N/A"
+        to_str = to_vn.strftime("%Y-%m-%d %H:%M") if to_vn else "N/A"
+
         return f"{float(discount)}% (valid from {from_str} to {to_str})"
     return "None"
 

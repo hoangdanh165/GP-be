@@ -95,6 +95,7 @@ class ChatbotViewSet(viewsets.ModelViewSet):
         )
 
         cached = get_cached_response(message)
+        
         if cached:
             bot_message = ChatbotHistory.objects.create(
                 user=request.user, message=cached, is_bot=True

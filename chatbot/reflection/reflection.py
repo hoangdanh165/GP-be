@@ -83,7 +83,7 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
         history_string = format_history(history)
 
         higher_level_summaries_prompt = f"""
-        Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English/Vietnamese (the language base on chat history) which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
+        Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English/Vietnamese (the language to answer base on latest question) which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
         Chat history:
         {history_string}
         Latest question: {query}
@@ -112,9 +112,6 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
             if len(history) > last_items_considered:
                 history = history[-last_items_considered:]
 
-            # Thêm query mới nhất
-            # history.append({"role": "user", "content": query})
-
             if len(history) == 1 and history[0]["content"] == query:
                 logger.info("No chat history available, returning original query")
                 return query
@@ -122,7 +119,7 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
             history_string = format_history(history)
 
             higher_level_summaries_prompt = f"""
-            Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English/Vietnamese (the language base on chat history) which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
+            Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English/Vietnamese (the language to answer base on latest question) which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
             Chat history:
             {history_string}
             Latest question: {query}
