@@ -13,6 +13,7 @@ from ..semantic_router.semantic_router import classify_intent
 import redis
 from django.conf import settings
 import json
+import time
 
 
 redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
@@ -85,6 +86,7 @@ class ChatbotViewSet(viewsets.ModelViewSet):
         renderer_classes=[renderers.JSONRenderer],
     )
     def ask_gemini(self, request):
+        start_time = time.time()
         serializer = ChatbotHistorySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -95,12 +97,14 @@ class ChatbotViewSet(viewsets.ModelViewSet):
         )
 
         cached = get_cached_response(message)
-        
+
         if cached:
             bot_message = ChatbotHistory.objects.create(
                 user=request.user, message=cached, is_bot=True
             )
             bot_message_serializer = ChatbotHistorySerializer(bot_message)
+            elapsed_time = time.time() - start_time
+            print(f"ask_gemini execution time: {elapsed_time:.2f} seconds")
             return Response(bot_message_serializer.data)
 
         intent = classify_intent(message)
@@ -120,22 +124,22 @@ class ChatbotViewSet(viewsets.ModelViewSet):
         else:
             response = "Sorry I don't understand your request clearly. Please tell me more information!"
 
-        # final_response = reflect_response(message, response)
-        final_response = response
-
-        cache_response(message, final_response)
+        cache_response(message, response)
 
         bot_message = ChatbotHistory.objects.create(
-            user=request.user, message=final_response, is_bot=True
+            user=request.user, message=response, is_bot=True
         )
 
         cache_key = f"chat_history:{request.user.id}"
         cache_ttl = 3600
 
-        new_entry = {"is_bot": True, "message": final_response}
+        new_entry = {"is_bot": True, "message": response}
         redis_client.rpush(cache_key, json.dumps(new_entry))
         redis_client.expire(cache_key, cache_ttl)
 
         bot_message_serializer = ChatbotHistorySerializer(bot_message)
+
+        elapsed_time = time.time() - start_time
+        print(f"ask_gemini execution time: {elapsed_time:.2f} seconds")
 
         return Response(bot_message_serializer.data)

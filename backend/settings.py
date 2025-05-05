@@ -271,3 +271,19 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT")
 # Set REDIS_URL based on ENVIRONMENT
 # REDIS_URL = REDIS_INTERNAL_URL if ENVIRONMENT == "production" else REDIS_EXTERNAL_URL
 REDIS_URL = os.environ.get("REDIS_EXTERNAL_URL")
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.environ.get("REDIS_EXTERNAL_URL"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL_KWARGS": {
+                "ssl_cert_reqs": None,
+            },
+        },
+    }
+}
+
+CACHE_TIMEOUT = 86400

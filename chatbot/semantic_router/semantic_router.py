@@ -4,6 +4,7 @@ from .route import Route
 from .samples import service_samples, all_service_samples
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -50,11 +51,15 @@ class EmbeddingCache:
 embedding_cache = EmbeddingCache()
 
 
-def classify_intent(query: str, similarity_threshold: float = 0.7) -> str:
+def classify_intent(query: str, similarity_threshold: float = 0.9) -> str:
+    start_time = time.time()
+
     query_embedding = embedding_cache.get(query)
 
     if query_embedding is None:
         logger.warning(f"Could not get embedding for query: {query}")
+        elapsed_time = time.time() - start_time
+        logger.info(f"classify_intent execution time: {elapsed_time:.2f} seconds")
         return "unknown"
 
     max_similarity = -1.0
@@ -80,9 +85,12 @@ def classify_intent(query: str, similarity_threshold: float = 0.7) -> str:
         logger.info(
             f"Classified intent: {selected_intent} (similarity: {max_similarity:.4f})"
         )
-        return selected_intent
     else:
         logger.info(
             f"No intent matched for query: {query} (max similarity: {max_similarity:.4f})"
         )
-        return "unknown"
+
+    elapsed_time = time.time() - start_time
+    logger.info(f"classify_intent execution time: {elapsed_time:.2f} seconds")
+
+    return selected_intent

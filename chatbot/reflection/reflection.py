@@ -1,6 +1,7 @@
 import redis
 import json
 import logging
+import time
 from django.conf import settings
 from ..models.chatbot_history import ChatbotHistory
 from ..services.gemini_client_test import (
@@ -24,6 +25,7 @@ def format_history(history):
 
 
 def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=3600):
+    start_time = time.time()
     try:
         cache_key = f"chat_history:{user_id}"
 
@@ -78,6 +80,8 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
 
         if len(history) == 1 and history[0]["message"] == query:
             logger.info("No chat history available, returning original query")
+            elapsed_time = time.time() - start_time
+            logger.info(f"reformulate_query execution time: {elapsed_time:.2f} seconds")
             return query
 
         history_string = format_history(history)
@@ -94,9 +98,13 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
 
         if not reformulated_query:
             logger.warning("LLM returned empty response, returning original query")
+            elapsed_time = time.time() - start_time
+            logger.info(f"reformulate_query execution time: {elapsed_time:.2f} seconds")
             return query
 
         logger.info(f"Reformulated query: {reformulated_query}")
+        elapsed_time = time.time() - start_time
+        logger.info(f"reformulate_query execution time: {elapsed_time:.2f} seconds")
         return reformulated_query.strip()
 
     except redis.RedisError as e:
@@ -114,6 +122,10 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
 
             if len(history) == 1 and history[0]["content"] == query:
                 logger.info("No chat history available, returning original query")
+                elapsed_time = time.time() - start_time
+                logger.info(
+                    f"reformulate_query execution time: {elapsed_time:.2f} seconds"
+                )
                 return query
 
             history_string = format_history(history)
@@ -129,14 +141,24 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
 
             if not reformulated_query:
                 logger.warning("LLM returned empty response, returning original query")
+                elapsed_time = time.time() - start_time
+                logger.info(
+                    f"reformulate_query execution time: {elapsed_time:.2f} seconds"
+                )
                 return query
 
+            elapsed_time = time.time() - start_time
+            logger.info(f"reformulate_query execution time: {elapsed_time:.2f} seconds")
             return reformulated_query.strip()
 
         except Exception as e:
             logger.error(f"Error reformulating query: {str(e)}")
+            elapsed_time = time.time() - start_time
+            logger.info(f"reformulate_query execution time: {elapsed_time:.2f} seconds")
             return query
 
     except Exception as e:
         logger.error(f"Error reformulating query: {str(e)}")
+        elapsed_time = time.time() - start_time
+        logger.info(f"reformulate_query execution time: {elapsed_time:.2f} seconds")
         return query

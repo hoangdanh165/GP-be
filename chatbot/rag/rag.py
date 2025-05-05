@@ -1,9 +1,10 @@
 from ..services.gemini_client_test import get_gemini_response
-from ..utils import search_similar_services
+from ..utils import search_similar_services, get_all_services
 from datetime import datetime, timedelta
 from django.core.exceptions import ObjectDoesNotExist
 from service.models.service import Service
 import pytz
+import time
 
 
 def format_duration(duration: timedelta) -> str:
@@ -37,38 +38,10 @@ def format_discount(
 
 
 def rag_response(query, all_services=False):
+    start_time = time.time()
 
     if all_services:
-        try:
-            services = Service.objects.all().values(
-                "name",
-                "description",
-                "price",
-                "estimated_duration",
-                "discount",
-                "discount_from",
-                "discount_to",
-                "category_id",
-            )
-            services = [
-                {
-                    "name": service["name"],
-                    "description": service["description"],
-                    "price": float(service["price"]),
-                    "estimated_duration": service["estimated_duration"],
-                    "discount": (
-                        float(service["discount"]) if service["discount"] else 0.0
-                    ),
-                    "discount_from": service["discount_from"],
-                    "discount_to": service["discount_to"],
-                    "category_id": service["category_id"],
-                }
-                for service in services
-            ]
-            print(f"Retrieved {len(services)} services from Service.objects.all()")
-        except ObjectDoesNotExist:
-            print("No services found in database")
-            services = []
+        services = get_all_services()
     else:
         services = search_similar_services(query)
         print("services: ", services)
@@ -101,7 +74,7 @@ def rag_response(query, all_services=False):
     # Create enhanced prompt for Gemini
     prompt = f"""
         You are a friendly and professional assistant for Prestige Auto Garage. Your goal is to provide a conversational and helpful response to the user's question, using the provided service information as context. Follow these guidelines:
-        - Anser the user's question in there language.
+        - Anser the user's question in their language.
         - Answer the user's question directly and concisely, focusing on their intent.
         - Use a natural, engaging tone as if you were speaking to a customer in person.
         - Incorporate relevant details from the service information (e.g., price, duration, description) in a seamless way, without listing them like a database entry.
@@ -115,5 +88,8 @@ def rag_response(query, all_services=False):
 
         Question: {query}
     """
+
+    elapsed_time = time.time() - start_time
+    print(f"rag_response execution time: {elapsed_time:.2f} seconds")
 
     return get_gemini_response(prompt)

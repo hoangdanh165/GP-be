@@ -1,6 +1,8 @@
 import os
 from .services.gemini_client_test import get_embedding
 from django.db import connection
+from service.models.service import Service
+from django.core.exceptions import ObjectDoesNotExist
 
 
 def search_similar_services(query, limit=3):
@@ -47,3 +49,35 @@ def search_similar_services(query, limit=3):
 
     print("results: ", results)
     return results
+
+
+def get_all_services():
+    try:
+        services = Service.objects.all().values(
+            "name",
+            "description",
+            "price",
+            "estimated_duration",
+            "discount",
+            "discount_from",
+            "discount_to",
+            "category_id",
+        )
+        services = [
+            {
+                "name": service["name"],
+                "description": service["description"],
+                "price": float(service["price"]),
+                "estimated_duration": service["estimated_duration"],
+                "discount": float(service["discount"]) if service["discount"] else 0.0,
+                "discount_from": service["discount_from"],
+                "discount_to": service["discount_to"],
+                "category_id": service["category_id"],
+            }
+            for service in services
+        ]
+        print(f"Retrieved {len(services)} services from Service.objects.all()")
+        return services
+    except ObjectDoesNotExist:
+        print("No services found in database")
+        return []
