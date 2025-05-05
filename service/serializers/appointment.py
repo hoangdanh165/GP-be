@@ -90,10 +90,12 @@ class AppointmentUpdateSerializer(serializers.ModelSerializer):
 
         for service_data in services_data:
             print(instance, service_data["service"].id, service_data["price"])
+
             AppointmentService.objects.create(
                 appointment=instance,
                 service_id=service_data["service"].id,
                 price=service_data["price"],
+                completed=service_data["completed"],
             )
 
         return instance

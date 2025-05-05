@@ -13,7 +13,7 @@ import requests
 
 def send_appointment_reminder_email(user, appointment_time, services, template):
     subject = (
-        f"🚗 [Prestige Auto Garage] Service Appointment Reminder - {appointment_time}"
+        f"[Prestige Auto Garage] Service Appointment Reminder - {appointment_time}"
     )
 
     html_content = render_to_string(
@@ -26,6 +26,28 @@ def send_appointment_reminder_email(user, appointment_time, services, template):
     )
     text_content = strip_tags(html_content)
     text_content += f"\n\nConfirm your appointment at: "
+
+    email = EmailMultiAlternatives(
+        subject=subject,
+        body=text_content,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user.email],
+    )
+    email.attach_alternative(html_content, "text/html")
+    email.send()
+
+
+def send_vehicle_ready_email(user, services, vehicle_ready_time, template):
+    subject = f"[Prestige Auto Garage] Vehicle Pickup Reminder"
+
+    context = {
+        "customer_name": user.get_full_name() or user.username,
+        "vehicle_ready_time": vehicle_ready_time,
+        "services": services,
+    }
+
+    html_content = render_to_string(template, context)
+    text_content = strip_tags(html_content)
 
     email = EmailMultiAlternatives(
         subject=subject,

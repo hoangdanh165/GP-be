@@ -112,15 +112,14 @@ class ChatbotViewSet(viewsets.ModelViewSet):
         reflected_query = reformulate_query(message, user_id=request.user.id)
 
         if intent in ["services"]:
-            print("Intent detected:", intent)
-
-            print("REFLECTED_QUERY: ", reflected_query)
             response = rag_response(reflected_query)
 
         elif intent in ["all_services"]:
-            print("Intent detected:", intent)
             response = rag_response(reflected_query, all_services=True)
-            pass
+
+        elif intent in ["chitchat"]:
+            response = "I’m here to assist with anything related to Prestige Auto Garage — like service details, car repairs, appointments, and more. If you’re looking for information on those topics, feel free to ask me anything!"
+
         else:
             response = "Sorry I don't understand your request clearly. Please tell me more information!"
 

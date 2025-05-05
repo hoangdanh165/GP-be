@@ -10,9 +10,13 @@ class AppointmentService(models.Model):
     appointment = models.ForeignKey(
         Appointment, on_delete=models.CASCADE, related_name="appointment_services"
     )
+    
     service = models.ForeignKey(
         Service, on_delete=models.CASCADE, related_name="appointment_services"
     )
+
+    completed = models.BooleanField(default=False)
+
     price = models.DecimalField(
         max_digits=10, decimal_places=2, null=False, blank=False
     )

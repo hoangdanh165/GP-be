@@ -87,13 +87,12 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
         history_string = format_history(history)
 
         higher_level_summaries_prompt = f"""
-        Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English/Vietnamese (the language to answer base on latest question) which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
+        Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
         Chat history:
         {history_string}
         Latest question: {query}
         """
-        print("history_string: ", history_string)
-
+        logger.info(f"Prompt for Gemini: {higher_level_summaries_prompt}")
         reformulated_query = get_gemini_response(higher_level_summaries_prompt)
 
         if not reformulated_query:
@@ -131,11 +130,12 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
             history_string = format_history(history)
 
             higher_level_summaries_prompt = f"""
-            Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English/Vietnamese (the language to answer base on latest question) which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
+            Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
             Chat history:
             {history_string}
             Latest question: {query}
             """
+            logger.info(f"Prompt for Gemini: {higher_level_summaries_prompt}")
 
             reformulated_query = get_gemini_response(higher_level_summaries_prompt)
 

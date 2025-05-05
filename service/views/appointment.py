@@ -18,7 +18,11 @@ from ..serializers.appointment import (
     AppointmentDetailSerializer,
     AppointmentUpdateSerializer,
 )
-from ..services.appoinment import send_appointment_reminder_email
+from ..services.appoinment import (
+    send_appointment_reminder_email,
+    send_vehicle_ready_email,
+)
+from datetime import datetime
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):
@@ -110,6 +114,20 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def create_reminder(self, request):
         appointment_id = request.data.get("id")
         type = request.data.get("type")
+        vehicle_ready_time_raw = request.data.get("vehicle_ready_time")
+        formatted_ready_time = None
+
+        if vehicle_ready_time_raw:
+            try:
+                dt = datetime.fromisoformat(vehicle_ready_time_raw)
+
+                formatted_ready_time = dt.strftime("%I:%M %p, %B %d, %Y")
+            except Exception as e:
+                return Response(
+                    {"error": f"Invalid vehicle_ready_time format: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         reminder_type = request.data.get("reminder_type")
 
         if not appointment_id or not reminder_type:
@@ -126,6 +144,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             "%I:%M %p, %B %d, %Y"
         )  # 3:30 PM, April 15, 2025
 
+        print("APPOJ", appointment.get_date())
         appointment_services = AppointmentService.objects.filter(
             appointment=appointment
         )
@@ -161,6 +180,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 },
                 "success_message": "1-day reminder email sent successfully",
             },
+            "VEHICLE_READY_REMINDER": {
+                "field": "reminded_vehicle_ready",
+                "email_params": {
+                    "template": "service/email/vehicle_ready_reminder.html",
+                    "user": user,
+                    "vehicle_ready_time": formatted_ready_time,
+                    "services": services,
+                },
+                "success_message": "Vehicle ready reminder email sent successfully",
+            },
         }
 
         config = REMINDER_CONFIG.get(reminder_type)
@@ -172,14 +201,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         if getattr(appointment, config["field"]):
             return Response(
-                {"error": f"{reminder_type} already sent for this appointment"},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"detail": f"{reminder_type} already sent for this appointment"},
+                status=status.HTTP_200_OK,
             )
 
         try:
-            send_appointment_reminder_email(**config["email_params"])
+            if config["email_params"].get("vehicle_ready_time"):
+                send_vehicle_ready_email(**config["email_params"])
+            else:
+                send_appointment_reminder_email(**config["email_params"])
 
             setattr(appointment, config["field"], True)
+
             appointment.save(update_fields=[config["field"]])
 
             return Response(

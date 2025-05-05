@@ -9,10 +9,10 @@ class AppointmentServiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AppointmentService
-        fields = ["id", "service", "price"]
+        fields = ["id", "service", "price", "completed"]
 
 
 class AppointmentServiceInputSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppointmentService
-        fields = ["service", "price"]
+        fields = ["service", "price", "completed"]
