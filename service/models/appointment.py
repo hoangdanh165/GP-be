@@ -9,7 +9,7 @@ class Appointment(models.Model):
         PENDING = "pending", "Pending"
         CONFIRMED = "confirmed", "Confirmed"
         COMPLETED = "completed", "Completed"
-        CANCELLED = "cancelled", "Cancelled"
+        CANCELED = "canceled", "Canceled"
         PROCESSING = "processing", "Processing"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
