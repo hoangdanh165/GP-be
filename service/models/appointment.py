@@ -10,6 +10,7 @@ class Appointment(models.Model):
         CONFIRMED = "confirmed", "Confirmed"
         COMPLETED = "completed", "Completed"
         CANCELLED = "cancelled", "Cancelled"
+        PROCESSING = "processing", "Processing"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.TextField(null=True, blank=True)

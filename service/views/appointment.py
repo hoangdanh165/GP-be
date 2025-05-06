@@ -223,3 +223,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 {"error": f"Failed to send email: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(
+        methods=["get"],
+        url_path="my-appointments",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def my_appointments(self, request):
+        user = request.user
+        appointments = self.queryset.filter(customer=user).order_by("-date")
+        serializer = AppointmentDetailSerializer(appointments, many=True)
+        return Response(serializer.data)
