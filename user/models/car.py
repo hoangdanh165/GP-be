@@ -18,7 +18,7 @@ class Car(models.Model):
     license_plate = models.CharField(max_length=20, blank=True, null=True)
     registration_province = models.CharField(max_length=255)
     vin = models.CharField(
-        max_length=100, blank=True, null=True
+        max_length=100, blank=True, null=True, unique=True
     )  # Vehicle Identification Number
 
     create_at = models.DateTimeField(auto_now_add=True)
