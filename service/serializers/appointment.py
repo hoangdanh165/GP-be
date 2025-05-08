@@ -63,6 +63,8 @@ class AppointmentUpdateSerializer(serializers.ModelSerializer):
             "vehicle_information",
             "additional_customer_information",
             "appointment_services",
+            "create_at",
+            "update_at",
         ]
 
     def create(self, validated_data):

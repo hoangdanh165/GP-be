@@ -233,6 +233,6 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     )
     def my_appointments(self, request):
         user = request.user
-        appointments = self.queryset.filter(customer=user).order_by("-date")
+        appointments = self.queryset.filter(customer=user).order_by("-create_at")
         serializer = AppointmentDetailSerializer(appointments, many=True)
         return Response(serializer.data)
