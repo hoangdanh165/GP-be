@@ -15,4 +15,5 @@ urlpatterns = [
     path("", include("service.urls")),
     path("", include("notification.urls")),
     path("", include("chatbot.urls")),
+    path("", include("payment.urls")),
 ]
