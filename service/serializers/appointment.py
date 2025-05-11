@@ -41,6 +41,7 @@ class AppointmentDetailSerializer(serializers.ModelSerializer):
             "vehicle_information",
             "additional_customer_information",
             "appointment_services",
+            "invoice_created",
             "create_at",
             "update_at",
         ]

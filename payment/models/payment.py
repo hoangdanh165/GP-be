@@ -58,7 +58,7 @@ class Payment(models.Model):
 
     @staticmethod
     def generate_invoice_id():
-        last_payment = Payment.objects.all().order_by("id").last()
+        last_payment = Payment.objects.all().order_by("create_at").last()
         if last_payment:
             last_number = int(last_payment.invoice_id[3:])
             new_number = last_number + 1

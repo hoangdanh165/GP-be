@@ -57,6 +57,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 )
                 payment.save()
 
+                appointment = payment.appointment
+                appointment.invoice_created = True
+                appointment.save(update_fields=["invoice_created"])
+
                 response_serializer = PaymentDetailSerializer(payment)
                 return Response(
                     {
@@ -74,4 +78,39 @@ class PaymentViewSet(viewsets.ModelViewSet):
             return Response(
                 {"error": serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(
+        methods=["get"],
+        url_path="get-by-appointment",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def get_by_appointment(self, request):
+        appointment_id = request.query_params.get("appointment_id")
+        if not appointment_id:
+            return Response(
+                {"error": "Missing appointment_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            appointment = get_object_or_404(Appointment, id=appointment_id)
+            payment = Payment.objects.filter(appointment=appointment).first()
+            if not payment:
+                return Response(
+                    {"error": "No payment found for this appointment"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            serializer = PaymentDetailSerializer(payment)
+            return Response(
+                {"data": serializer.data},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Something went wrong: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
