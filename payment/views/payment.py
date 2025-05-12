@@ -17,6 +17,20 @@ from ..serializers.payment import (
     PaymentUpdateSerializer,
 )
 from service.models.appointment import Appointment
+from ..vnpay import vnpay
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0]
+    else:
+        ip = request.META.get("REMOTE_ADDR")
+    return ip
 
 
 class PaymentViewSet(viewsets.ModelViewSet):
@@ -112,5 +126,213 @@ class PaymentViewSet(viewsets.ModelViewSet):
         except Exception as e:
             return Response(
                 {"error": f"Something went wrong: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(
+        methods=["post"],
+        url_path="create-url",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def payment(self, request):
+        try:
+            data = request.data
+
+            order_type = data.get("order_type", "billpayment")
+            order_id = data.get("order_id")
+            amount = int(float(data.get("amount")))
+
+            order_desc = data.get("order_desc")
+            bank_code = data.get("bank_code", "")
+            language = data.get("language", "vn")
+
+            ipaddr = get_client_ip(request)
+
+            vnp = vnpay()
+            vnp.requestData["vnp_Version"] = "2.1.0"
+            vnp.requestData["vnp_Command"] = "pay"
+            vnp.requestData["vnp_TmnCode"] = settings.VNPAY_TMN_CODE
+            vnp.requestData["vnp_Amount"] = amount * 100
+            vnp.requestData["vnp_CurrCode"] = "VND"
+            vnp.requestData["vnp_TxnRef"] = order_id
+            vnp.requestData["vnp_OrderInfo"] = order_desc
+            vnp.requestData["vnp_OrderType"] = order_type
+            vnp.requestData["vnp_Locale"] = language or "vn"
+            if bank_code:
+                vnp.requestData["vnp_BankCode"] = bank_code
+            vnp.requestData["vnp_CreateDate"] = timezone.localtime(
+                timezone.now()
+            ).strftime("%Y%m%d%H%M%S")
+            vnp.requestData["vnp_IpAddr"] = ipaddr
+            vnp.requestData["vnp_ReturnUrl"] = settings.VNPAY_RETURN_URL
+
+            payment_url = vnp.get_payment_url(
+                settings.VNPAY_PAYMENT_URL, settings.VNPAY_HASH_SECRET_KEY
+            )
+
+            return Response(
+                {"code": "00", "payment_url": payment_url}, status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            logger.exception("Error creating VNPAY URL")
+            return Response(
+                {"code": "99", "message": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(
+        methods=["get"],
+        url_path="return",
+        detail=False,
+        permission_classes=[AllowAny],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def payment_return(self, request):
+        input_data = request.query_params
+
+        if not input_data:
+            return Response(
+                {"message": "No query parameters found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        vnp = vnpay()
+        vnp.responseData = input_data.dict()
+
+        try:
+            order_id = input_data.get("vnp_TxnRef")
+            amount = int(input_data.get("vnp_Amount", 0)) / 100
+            order_desc = input_data.get("vnp_OrderInfo")
+            transaction_no = input_data.get("vnp_TransactionNo")
+            response_code = input_data.get("vnp_ResponseCode")
+            pay_date = input_data.get("vnp_PayDate")
+            bank_code = input_data.get("vnp_BankCode")
+            card_type = input_data.get("vnp_CardType")
+
+            if vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+                if response_code == "00":
+                    return Response(
+                        {
+                            "title": "Payment Result",
+                            "result": "Success",
+                            "order_id": order_id,
+                            "amount": amount,
+                            "order_description": order_desc,
+                            "transaction_no": transaction_no,
+                            "pay_date": pay_date,
+                            "bank_code": bank_code,
+                            "card_type": card_type,
+                            "response_code": response_code,
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                else:
+                    return Response(
+                        {
+                            "title": "Payment Result",
+                            "result": "Failed",
+                            "order_id": order_id,
+                            "amount": amount,
+                            "order_description": order_desc,
+                            "transaction_no": transaction_no,
+                            "pay_date": pay_date,
+                            "bank_code": bank_code,
+                            "card_type": card_type,
+                            "response_code": response_code,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                return Response(
+                    {
+                        "title": "Payment Result",
+                        "result": "Invalid checksum",
+                        "message": "Secure hash verification failed.",
+                        "order_id": order_id,
+                        "amount": amount,
+                        "order_description": order_desc,
+                        "transaction_no": transaction_no,
+                        "response_code": response_code,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        except Exception as e:
+            return Response(
+                {
+                    "message": "An error occurred while processing payment return.",
+                    "error": str(e),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(
+        methods=["get"],
+        url_path="ipn",
+        detail=False,
+        permission_classes=[AllowAny],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def payment_ipn(self, request):
+        input_data = request.query_params
+
+        if not input_data:
+            return Response(
+                {"RspCode": "99", "Message": "Invalid request"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        vnp = vnpay()
+        vnp.responseData = input_data.dict()
+
+        try:
+            order_id = input_data.get("vnp_TxnRef")
+            amount = input_data.get("vnp_Amount")
+            order_desc = input_data.get("vnp_OrderInfo")
+            transaction_no = input_data.get("vnp_TransactionNo")
+            response_code = input_data.get("vnp_ResponseCode")
+            pay_date = input_data.get("vnp_PayDate")
+            bank_code = input_data.get("vnp_BankCode")
+            card_type = input_data.get("vnp_CardType")
+
+            if not vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+                return Response(
+                    {"RspCode": "97", "Message": "Invalid signature"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # TODO: Replace with your real DB logic here:
+            # Check if order is already updated
+            first_time_update = True  # giả định lần đầu
+            correct_amount = True  # giả định số tiền đúng
+
+            if not correct_amount:
+                return Response(
+                    {"RspCode": "04", "Message": "Invalid amount"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not first_time_update:
+                return Response(
+                    {"RspCode": "02", "Message": "Order already updated"},
+                    status=status.HTTP_200_OK,
+                )
+
+            if response_code == "00":
+                print("✅ Payment success. Update your DB here.")
+            else:
+                print("❌ Payment failed. Handle error case here.")
+
+            return Response(
+                {"RspCode": "00", "Message": "Confirm success"},
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            return Response(
+                {"RspCode": "99", "Message": f"Internal server error: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
