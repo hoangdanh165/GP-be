@@ -56,7 +56,7 @@ def rag_response(query, all_services=False):
     for idx, service in enumerate(services, 1):
         context_lines.append(f"{idx}. {service['name']}")
         context_lines.append(f"   - Description: {service['description']}")
-        context_lines.append(f"   - Price: ${service['price']:.2f}")
+        context_lines.append(f"   - Price: {service['price']:.2f} VND")
         context_lines.append(
             f"   - Estimated Duration: {format_duration(service['estimated_duration'])}"
         )
