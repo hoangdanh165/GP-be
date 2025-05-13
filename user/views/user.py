@@ -495,6 +495,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 refresh_token = str(refresh)
                 avatar = user.avatar
                 full_name = user.full_name
+                address = user.address
 
                 if avatar:
                     avatar = avatar.url
@@ -510,6 +511,8 @@ class UserViewSet(viewsets.ModelViewSet):
                         "status": user.status,
                         "avatar": avatar,
                         "fullName": full_name,
+                        "phone": user.get_phone(),
+                        "address": address,
                     },
                     status=status.HTTP_200_OK,
                 )

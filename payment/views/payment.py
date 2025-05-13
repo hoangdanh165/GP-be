@@ -280,6 +280,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         input_data = request.query_params
 
         if not input_data:
+            print("NO INPUT DATA")
             return Response(
                 {"RspCode": "99", "Message": "Invalid request"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -299,6 +300,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             card_type = input_data.get("vnp_CardType")
 
             if not vnp.validate_response(settings.VNPAY_HASH_SECRET_KEY):
+                print("INVALID SIGNATURE")
                 return Response(
                     {"RspCode": "97", "Message": "Invalid signature"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -306,14 +308,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
             # TODO: Replace with your real DB logic here:
             # Check if order is already updated
-            first_time_update = True  # giả định lần đầu
-            correct_amount = True  # giả định số tiền đúng
-
-            if not correct_amount:
-                return Response(
-                    {"RspCode": "04", "Message": "Invalid amount"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            first_time_update = True
 
             if not first_time_update:
                 return Response(
@@ -321,10 +316,54 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_200_OK,
                 )
 
-            if response_code == "00":
-                print("✅ Payment success. Update your DB here.")
-            else:
-                print("❌ Payment failed. Handle error case here.")
+            try:
+                payment = get_object_or_404(Payment, invoice_id=order_id)
+
+                if payment.status != Payment.PaymentStatus.PENDING:
+                    return Response(
+                        {"RspCode": "02", "Message": "Order already updated"},
+                        status=status.HTTP_200_OK,
+                    )
+
+                correct_amount = str(int(payment.amount * 100)) == amount
+                if not correct_amount:
+                    return Response(
+                        {"RspCode": "04", "Message": "Invalid amount"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                if response_code == "00":
+                    print("Payment success")
+
+                    payment.status = Payment.PaymentStatus.PAID
+                    payment.transaction_id = transaction_no
+                    payment.paid_at = timezone.now()
+
+                    node_server = os.getenv("NODE_JS_HOST", "http://localhost:5000")
+                    node_payment_api = "/api/v1/payments/"
+                    node_url = node_server + node_payment_api
+                    formData = {"invoice_id": order_id, "status": "paid"}
+
+                    try:
+                        res = requests.post(node_url, json={"formData": formData})
+                        print("Sent data to Node.js:", res.status_code, res.text)
+                    except requests.RequestException as e:
+                        print("Failed to send to Node.js:", str(e))
+
+                else:
+                    print(f"Payment failed with code: {response_code}")
+
+                    payment.status = Payment.PaymentStatus.FAILED
+                    payment.transaction_id = transaction_no
+                    payment.note = f"Failed with code {response_code} at {pay_date}"
+
+                payment.save()
+
+            except Payment.DoesNotExist:
+                return Response(
+                    {"RspCode": "01", "Message": "Order not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
             return Response(
                 {"RspCode": "00", "Message": "Confirm success"},

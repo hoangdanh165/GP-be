@@ -227,11 +227,19 @@ def create_service_categories():
         print(f"✅ Created/Found category: {category.name}")
 
 
+def round_price(min_price, max_price, step=50000):
+    """Sinh giá tròn tròn theo bước step (default 50k)."""
+    return random.randrange(min_price, max_price + step, step)
+
+
 def create_services():
     categories = {
         category.name.upper(): category for category in Category.objects.all()
     }
     services = []
+
+    def round_price(min_price, max_price, step=50000):
+        return random.randrange(min_price, max_price + step, step)
 
     for category_key, names in SERVICE_GROUPS.items():
         category = categories.get(category_key)
@@ -243,37 +251,43 @@ def create_services():
             description = SERVICE_DESCRIPTIONS.get(name, "No description available.")
 
             if category_key == "MAINTENANCE":
-                price = random.uniform(30, 100)
+                price = round_price(300_000, 1_000_000)
                 duration = timedelta(hours=random.randint(1, 2))
             elif category_key == "REPAIR":
-                price = random.uniform(100, 400)
+                price = round_price(1_000_000, 4_000_000, step=100_000)
                 duration = timedelta(hours=random.randint(2, 4))
             elif category_key == "CARE":
-                price = random.uniform(20, 150)
+                price = round_price(200_000, 1_500_000)
                 duration = timedelta(hours=random.randint(1, 3))
             elif category_key == "UPGRADE":
-                price = random.uniform(50, 300)
+                price = round_price(500_000, 3_000_000, step=100_000)
                 duration = timedelta(hours=random.randint(2, 5))
             elif category_key == "INSPECTION":
-                price = random.uniform(30, 80)
+                price = round_price(300_000, 800_000)
                 duration = timedelta(hours=1)
             elif category_key == "EXTRA":
-                price = random.uniform(20, 60)
+                price = round_price(200_000, 600_000)
+                duration = timedelta(hours=1)
+            else:
+                price = round_price(200_000, 500_000)
                 duration = timedelta(hours=1)
 
-            service = Service.objects.create(
+            service, created = Service.objects.update_or_create(
                 name=name,
-                description=description,
-                price=round(price, 2),
-                estimated_duration=duration,
                 category=category,
+                defaults={
+                    "description": description,
+                    "price": price,
+                    "estimated_duration": duration,
+                },
             )
-            services.append(service)
 
+            action = "🆕 Created" if created else "🔄 Updated"
             print(
-                f"🛠️ Created service: {name} | Price: ${round(price, 2)} | Duration: {duration}"
+                f"{action} service: {name} | Price: {price:,} VND | Duration: {duration}"
             )
-    print("🎉 All services created successfully!")
+
+    print("🎉 All services processed successfully!")
 
 
 def generate_license_plate():
@@ -589,10 +603,10 @@ if __name__ == "__main__":
     # create_roles()
     # create_users()
     # create_conversations()
-    create_service_categories()
+    # create_service_categories()
     create_services()
     # create_cars_for_customers()
-    create_appointments(10)
+    # create_appointments(10)
     # create_notifications(50)
     # create_chatbot_history(10)
     print("Fake data created successfully!")
