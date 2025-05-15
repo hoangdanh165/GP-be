@@ -42,6 +42,25 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
         ]
 
 
+class PaymentListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Payment
+        fields = [
+            "id",
+            "invoice_id",
+            "method",
+            "status",
+            "amount",
+            "transaction_id",
+            "paid_at",
+            "note",
+            "qr_code_url",
+            "create_at",
+            "update_at",
+        ]
+
+
 class PaymentUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment

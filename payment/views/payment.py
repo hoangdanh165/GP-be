@@ -9,12 +9,13 @@ from rest_framework.decorators import action
 from rest_framework import status
 from django.conf import settings
 from django.utils import timezone
-from base.utils.custom_pagination import CustomPagination
+from base.utils.custom_pagination import CustomPagination, CustomPaginationPayment
 from ..models.payment import Payment
 from ..serializers.payment import (
     PaymentSerializer,
     PaymentDetailSerializer,
     PaymentUpdateSerializer,
+    PaymentListSerializer,
 )
 from service.models.appointment import Appointment
 from ..vnpay import vnpay
@@ -123,6 +124,29 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 {"data": serializer.data},
                 status=status.HTTP_200_OK,
             )
+        except Exception as e:
+            return Response(
+                {"error": f"Something went wrong: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(
+        methods=["get"],
+        url_path="all",
+        detail=False,
+        permission_classes=[AllowAny],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def get_all_payments(self, request):
+        try:
+            payments = Payment.objects.all().order_by("-create_at")
+
+            paginator = CustomPaginationPayment()
+            paginated_payments = paginator.paginate_queryset(payments, request)
+
+            serializer = PaymentListSerializer(paginated_payments, many=True)
+
+            return paginator.get_paginated_response({"data": serializer.data})
         except Exception as e:
             return Response(
                 {"error": f"Something went wrong: {str(e)}"},

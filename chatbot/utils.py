@@ -5,7 +5,7 @@ from service.models.service import Service
 from django.core.exceptions import ObjectDoesNotExist
 
 
-def search_similar_services(query, limit=3):
+def search_similar_services(query, limit=5):
     query_embedding = get_embedding(query)
 
     with connection.cursor() as cursor:
@@ -49,6 +49,9 @@ def search_similar_services(query, limit=3):
 
     print("results: ", results)
     return results
+
+
+# search_similar_services("car wash, oil change, brake inspection, and ceramic coating")
 
 
 def get_all_services():
