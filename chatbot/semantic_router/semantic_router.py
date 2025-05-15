@@ -1,12 +1,14 @@
 import numpy as np
 import json
 import logging
-from django.core.cache import cache  # Sử dụng django-redis
+from django.core.cache import cache
 from ..services.gemini_client_test import get_embedding
 from .route import Route
 from .samples import service_samples, all_service_samples, chitchat_samples
 from sklearn.metrics.pairwise import cosine_similarity
 import time
+from django_redis import get_redis_connection
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,7 +31,7 @@ ROUTES = {
 
 
 class EmbeddingCache:
-    def __init__(self, cache_prefix="embedding:", timeout=86400):
+    def __init__(self, cache_prefix="embedding:", timeout=None):
         self.cache = cache
         self.cache_prefix = cache_prefix
         self.timeout = timeout
@@ -61,6 +63,39 @@ class EmbeddingCache:
         except Exception as e:
             logger.error(f"Error getting embedding for {text}: {str(e)}")
             return None
+
+
+def delete_all_redis_cache():
+    cache.clear()
+    redis_conn = get_redis_connection("default")
+    redis_conn.flushall()
+
+
+def view_all_cache():
+    redis_conn = get_redis_connection("default")
+    keys = redis_conn.keys("*")
+
+    if not keys:
+        print("No cache found in Redis.")
+        return
+
+    print(f"Found {len(keys)} cache key in Redis:\n")
+
+    for key in keys:
+        key_str = key.decode("utf-8")
+
+        try:
+            value = redis_conn.get(key).decode("utf-8")
+
+            try:
+                json_val = json.loads(value)
+                pretty_val = json.dumps(json_val, indent=2, ensure_ascii=False)
+            except json.JSONDecodeError:
+                pretty_val = value
+
+            print(f"{key_str}:\n{pretty_val}\n")
+        except Exception as e:
+            print(f"Error reading key {key_str}: {e}")
 
 
 def precompute_embeddings(routes):
@@ -121,4 +156,6 @@ def classify_intent(query: str, similarity_threshold: float = 0.7) -> str:
     return selected_intent
 
 
+# view_all_cache()
+# delete_all_redis_cache()
 # precompute_embeddings(ROUTES)

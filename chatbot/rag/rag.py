@@ -3,6 +3,7 @@ from ..utils import search_similar_services, get_all_services
 from datetime import datetime, timedelta
 from django.core.exceptions import ObjectDoesNotExist
 from service.models.service import Service
+from django.conf import settings
 import pytz
 import time
 
@@ -54,7 +55,7 @@ def rag_response(query, all_services=False):
     context_lines = ["Available Services:"]
 
     for idx, service in enumerate(services, 1):
-        context_lines.append(f"{idx}. {service['name']}")
+        context_lines.append(f"{service['id']}. {service['name']}")
         context_lines.append(f"   - Description: {service['description']}")
         context_lines.append(f"   - Price: {service['price']:.2f} VND")
         context_lines.append(
@@ -74,7 +75,7 @@ def rag_response(query, all_services=False):
     # Create enhanced prompt for Gemini
     prompt = f"""
         You are a friendly and professional assistant for Prestige Auto Garage. Your goal is to provide a conversational and helpful response to the user's question, using the provided service information as context. Follow these guidelines:
-        - Anser the user's question in their language.
+        - Anser the user's question in English.
         - Answer the user's question directly and concisely, focusing on their intent.
         - Use a natural, engaging tone as if you were speaking to a customer in person.
         - Incorporate relevant details from the service information (e.g., price, duration, description) in a seamless way, without listing them like a database entry.
@@ -82,7 +83,17 @@ def rag_response(query, all_services=False):
         - Avoid repeating the service description verbatim; instead, paraphrase or summarize it to fit the response.
         - If applicable, suggest related services or add value by explaining why the service is beneficial.
         - If service information is too long, summarize the key points and provide a concise answer.
-        
+        - If the user is clearly interested in one or more specific services, you MUST create a **booking link** using their corresponding service IDs.
+        - The booking link format is:
+        **{settings.FE_HOST}/customer/book-your-appointment?preferred-services={{uuid1}},{{uuid2}},...**
+        - If the user also **mentions a preferred appointment time** (e.g., “at 3pm tomorrow”, “next Monday at 10am”, “today”, “8 AM today”, “tomorrow”, ...), extract that time in **Vietnam time (GMT+7)** and format it as:
+        `YYYY-MM-DDTHH:MM:SS+07:00`
+        - Then add it to the booking link as a parameter:
+        `&appointment-time=YYYY-MM-DDTHH:MM:SS+07:00`
+        - Place the booking link in your response naturally (e.g., "You can book this service [here](link)").
+        - NEVER guess appointment time if it's not mentioned by the user.
+        - Do NOT invent service names or IDs not listed in the context.
+
         Service information:
         {context}
 

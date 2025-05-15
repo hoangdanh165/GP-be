@@ -87,11 +87,21 @@ def reformulate_query(query, user_id=None, last_items_considered=100, cache_ttl=
         history_string = format_history(history)
 
         higher_level_summaries_prompt = f"""
-        Given a chat history and the latest user question which might reference context in the chat history, formulate a standalone question in English which can be understood without the chat history. Do NOT answer the question, just reformulate it if needed and otherwise return it as is.
-        Chat history:
-        {history_string}
-        Latest question: {query}
-        """
+            You are given a chat history and the user's latest question. The user may have expressed their intent across multiple turns in the conversation. Your task is to rewrite the user's overall intent as a **standalone, clear, and complete question in English** that includes all relevant details mentioned in the chat history.
+
+            Important instructions:
+            - DO NOT answer the question.
+            - Only output the rewritten question.
+            - If the latest question is self-contained and doesn't rely on history, return it as-is.
+            - If there are multiple relevant requests across the history (e.g., asking about multiple services), COMBINE them into one clear question.
+            - The reformulated question should make sense even without the chat history.
+
+            Chat history:
+            {history_string}
+
+            Latest question: {query}
+            """
+
         logger.info(f"Prompt for Gemini: {higher_level_summaries_prompt}")
         reformulated_query = get_gemini_response(higher_level_summaries_prompt)
 

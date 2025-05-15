@@ -15,3 +15,4 @@ def get_embedding(text):
         model="models/embedding-001", content=text, task_type="retrieval_document"
     )
     return result["embedding"]
+

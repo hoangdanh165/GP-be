@@ -27,7 +27,7 @@ def search_similar_services(query, limit=3):
             ORDER BY similarity DESC
             LIMIT %s
             """,
-            [query_embedding, query_embedding, 0.8, limit],
+            [query_embedding, query_embedding, 0.7, limit],
         )
         rows = cursor.fetchall()
 
