@@ -20,6 +20,6 @@ class CustomPaginationNotification(PageNumberPagination):
 
 
 class CustomPaginationPayment(PageNumberPagination):
-    page_size = 10
+    page_size = 3
     page_query_param = "page"
     max_page_size = 10

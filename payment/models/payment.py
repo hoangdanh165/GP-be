@@ -12,6 +12,7 @@ class Payment(models.Model):
         BANK_TRANSFER = "bank_transfer", "Bank Transfer"
         MOMO = "momo", "MoMo"
         ZALO_PAY = "zalo_pay", "ZaloPay"
+        VNPAY = "vn_pay", "VNPay"
         OTHER = "other", "Other"
 
     class PaymentStatus(models.TextChoices):

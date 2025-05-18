@@ -11,6 +11,11 @@ from django.conf import settings
 from django.utils import timezone
 from base.utils.custom_pagination import CustomPagination, CustomPaginationPayment
 from ..models.payment import Payment
+from django.db.models import Q
+from django.utils.dateparse import parse_date
+from functools import reduce
+import operator
+
 from ..serializers.payment import (
     PaymentSerializer,
     PaymentDetailSerializer,
@@ -96,6 +101,54 @@ class PaymentViewSet(viewsets.ModelViewSet):
             )
 
     @action(
+        methods=["patch"],
+        url_path="update-status",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def update_status(self, request):
+        appointment_id = request.data.get("appointment_id")
+        new_status = request.data.get("status")
+
+        if not appointment_id or not new_status:
+            return Response(
+                {"error": "Missing appointment_id or status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_statuses = [choice[0] for choice in Payment.PaymentStatus.choices]
+        if new_status not in valid_statuses:
+            return Response(
+                {"error": f"Invalid status. Must be one of: {valid_statuses}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            appointment = get_object_or_404(Appointment, id=appointment_id)
+            payment = Payment.objects.filter(appointment=appointment).first()
+
+            if not payment:
+                return Response(
+                    {"error": "No payment found for this appointment"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            payment.status = new_status
+            payment.save()
+
+            serializer = PaymentDetailSerializer(payment)
+            return Response(
+                {"message": "Status updated successfully", "data": serializer.data}
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"Something went wrong: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(
         methods=["get"],
         url_path="get-by-appointment",
         detail=False,
@@ -141,12 +194,50 @@ class PaymentViewSet(viewsets.ModelViewSet):
         try:
             payments = Payment.objects.all().order_by("-create_at")
 
+            search = request.query_params.get("search")
+            status_filter = request.query_params.get("status")
+            method_filter = request.query_params.get("payment_method")
+            start_date_str = request.query_params.get("start_date")
+            end_date_str = request.query_params.get("end_date")
+
+            search_fields = [
+                "invoice_id",
+                "transaction_id",
+                "note",
+                "appointment__id",
+                "appointment__customer__full_name",
+            ]
+
+            if search:
+                query = reduce(
+                    operator.or_,
+                    [Q(**{f"{field}__icontains": search}) for field in search_fields],
+                )
+                payments = payments.filter(query)
+
+            if status_filter:
+                payments = payments.filter(status=status_filter)
+
+            if method_filter:
+                payments = payments.filter(method=method_filter)
+
+            if start_date_str:
+                start_date = parse_date(start_date_str)
+                if start_date:
+                    payments = payments.filter(create_at__date__gte=start_date)
+
+            if end_date_str:
+                end_date = parse_date(end_date_str)
+                if end_date:
+                    payments = payments.filter(create_at__date__lte=end_date)
+
             paginator = CustomPaginationPayment()
             paginated_payments = paginator.paginate_queryset(payments, request)
 
-            serializer = PaymentListSerializer(paginated_payments, many=True)
+            serializer = PaymentDetailSerializer(paginated_payments, many=True)
 
             return paginator.get_paginated_response({"data": serializer.data})
+
         except Exception as e:
             return Response(
                 {"error": f"Something went wrong: {str(e)}"},
