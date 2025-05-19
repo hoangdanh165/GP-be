@@ -3,6 +3,7 @@ from django.db import models
 from django.utils import timezone
 from .category import Category
 from pgvector.django import VectorField
+from chatbot.services.gemini_client_test import get_embedding
 
 
 class Service(models.Model):
@@ -34,6 +35,12 @@ class Service(models.Model):
     update_at = models.DateTimeField(auto_now=True)
 
     embedding = VectorField(dimensions=768, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.pk or self.embedding is None or len(self.embedding) == 0:
+            text = f"{self.name}: {self.description or ''}"
+            self.embedding = get_embedding(text)
+        super().save(*args, **kwargs)
 
     def get_date(self):
         if self.date:
