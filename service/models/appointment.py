@@ -33,6 +33,7 @@ class Appointment(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
 
+    feedback_sent = models.BooleanField(default=False)
     invoice_created = models.BooleanField(default=False)
     reminded_vehicle_ready = models.BooleanField(default=False)
     reminded_before_1h = models.BooleanField(default=False)

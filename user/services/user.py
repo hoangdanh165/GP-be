@@ -120,7 +120,7 @@ def validate_email(email):
 
 def send_verification_email(user):
     token, token_lifetime = generate_token(user)
-    subject = "Xác nhận email của bạn!"
+    subject = "Confirm your email!"
 
     default_host = settings.DEFAULT_HOST
     default_scheme = (
@@ -134,7 +134,7 @@ def send_verification_email(user):
     verification_url = (
         f"{ default_scheme }://{ default_host }/api/v1/users/verify-email?token={token}"
     )
-    type_of_action = "xác thực email"
+    type_of_action = "confirm your email"
 
     html_content = render_to_string(
         "user/email/email_verification.html",
@@ -146,7 +146,7 @@ def send_verification_email(user):
     )
 
     text_content = strip_tags(html_content)
-    text_content += f"\n\nXác nhận email: {verification_url}"
+    text_content += f"\n\nConfirm your email: {verification_url}"
 
     email = EmailMultiAlternatives(
         subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email]
@@ -157,7 +157,7 @@ def send_verification_email(user):
 
 def send_password_reset_email(user):
     token, token_lifetime = generate_token(user)
-    subject = "Đặt lại mật khẩu của bạn!"
+    subject = "Reset your password!"
     default_host = settings.DEFAULT_HOST
     default_scheme = (
         "http"
@@ -165,7 +165,7 @@ def send_password_reset_email(user):
         else "https"
     )
     expiration_time = token_lifetime.strftime("%H:%M %d/%m/%Y")
-    type_of_action = "đặt lại mật khẩu"
+    type_of_action = "reset your password"
     url = f"{default_scheme}://{default_host}/api/v1/users/handle-forgot-password?token={token}"
 
     html_content = render_to_string(
@@ -178,7 +178,7 @@ def send_password_reset_email(user):
     )
 
     text_content = strip_tags(html_content)
-    text_content += f"\n\nĐặt lại mật khẩu tại: {url}"
+    text_content += f"\n\nReset your password at: {url}"
 
     email = EmailMultiAlternatives(
         subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email]
@@ -191,7 +191,7 @@ def send_appointment_reminder_email(
     user, appointment_time, services, confirmation_link
 ):
     subject = (
-        f"🚗 [Prestige Auto Garage] Service Appointment Reminder - {appointment_time}"
+        f"[Prestige Auto Garage] Service Appointment Reminder - {appointment_time}"
     )
     default_host = settings.DEFAULT_HOST
     default_scheme = (

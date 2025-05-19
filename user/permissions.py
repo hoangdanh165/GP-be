@@ -1,14 +1,25 @@
 from rest_framework.permissions import BasePermission
 
+
 class IsAdmin(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role.name == 'admin'
+        return request.user.role.name == "admin"
+
 
 class IsSale(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role.name == 'sale'
+        return request.user.role.name == "sale"
+
 
 class IsCustomer(BasePermission):
     def has_permission(self, request, view):
-        return request.user.role.name == 'customer'
+        return request.user.role.name == "customer"
 
+
+class IsAdminOrSale(BasePermission):
+
+    def has_permission(self, request, view):
+        return request.user.role.name in [
+            "admin",
+            "sale",
+        ]
