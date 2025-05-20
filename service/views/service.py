@@ -20,7 +20,7 @@ from user.permissions import IsAdmin
 class ServiceViewSet(viewsets.ModelViewSet):
     queryset = Service.objects.all().order_by("id")
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     serializer_class = ServiceSerializer
     # pagination_class = CustomPagination
 
