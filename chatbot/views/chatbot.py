@@ -107,9 +107,9 @@ class ChatbotViewSet(viewsets.ModelViewSet):
             print(f"ask_gemini execution time: {elapsed_time:.2f} seconds")
             return Response(bot_message_serializer.data)
 
-        intent = classify_intent(message)
-
         reflected_query = reformulate_query(message, user_id=request.user.id)
+
+        intent = classify_intent(reflected_query)
 
         if intent in ["services"]:
             response = rag_response(reflected_query)
