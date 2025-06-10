@@ -22,6 +22,12 @@ from ..services.appoinment import (
     send_appointment_reminder_email,
     send_vehicle_ready_email,
 )
+from base.utils.custom_pagination import CustomPaginationAppointment
+from functools import reduce
+import operator
+from django.utils.dateparse import parse_date
+from django.db.models import Q
+
 from datetime import datetime
 
 
@@ -236,3 +242,66 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointments = self.queryset.filter(customer=user).order_by("-create_at")
         serializer = AppointmentDetailSerializer(appointments, many=True)
         return Response(serializer.data)
+
+    @action(
+        methods=["get"],
+        url_path="all",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def get_all_appointments(self, request):
+        try:
+            appointments = Appointment.objects.all().order_by("-create_at")
+
+            search = request.query_params.get("search")
+            status_filter = request.query_params.get("status")
+            vehicle_filter = request.query_params.get("vehicle")
+            start_date_str = request.query_params.get("start_date")
+            end_date_str = request.query_params.get("end_date")
+
+            search_fields = [
+                "invoice_id",
+                "transaction_id",
+                "note",
+                "appointment__id",
+                "appointment__customer__full_name",
+            ]
+
+            if search:
+                query = reduce(
+                    operator.or_,
+                    [Q(**{f"{field}__icontains": search}) for field in search_fields],
+                )
+                appointments = appointments.filter(query)
+
+            if status_filter:
+                appointments = appointments.filter(status=status_filter)
+
+            if vehicle_filter:
+                appointments = appointments.filter(
+                    vehicle_information__vin__icontains=vehicle_filter
+                )
+
+            if start_date_str:
+                start_date = parse_date(start_date_str)
+                if start_date:
+                    appointments = appointments.filter(date__date__gte=start_date)
+
+            if end_date_str:
+                end_date = parse_date(end_date_str)
+                if end_date:
+                    appointments = appointments.filter(date__date__lte=end_date)
+
+            paginator = CustomPaginationAppointment()
+            paginated_appointments = paginator.paginate_queryset(appointments, request)
+
+            serializer = AppointmentDetailSerializer(paginated_appointments, many=True)
+
+            return paginator.get_paginated_response({"data": serializer.data})
+
+        except Exception as e:
+            return Response(
+                {"error": f"Something went wrong: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

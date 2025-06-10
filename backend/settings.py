@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "notification",
     "chatbot",
     "pgvector",
+    "django_extensions",
 ]
 
 

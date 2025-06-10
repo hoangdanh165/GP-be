@@ -731,6 +731,30 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(
         methods=["get"],
+        url_path="get-all-users",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def get_all_users_except_self(self, request):
+        current_user = request.user.id
+
+        conversations_subquery = (
+            Conversation.objects.filter(participants=current_user)
+            .filter(participants=OuterRef("pk"))
+            .values("id")
+        )
+
+        all_users = User.objects.exclude(id=current_user).annotate(
+            had_conversation=Exists(conversations_subquery)
+        )
+
+        serializer = StaffSerializer(all_users, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        methods=["get"],
         url_path="get-all",
         detail=False,
         permission_classes=[IsAdmin],
