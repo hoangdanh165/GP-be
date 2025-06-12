@@ -203,7 +203,7 @@ if GS_CREDENTIALS_BASE64:
         temp_file_name
     )
 
-GS_BUCKET_NAME = "prestige-auto-bucket"
+GS_BUCKET_NAME = "inner-exchange-458000-p8.appspot.com"
 GS_DEFAULT_ACL = "publicRead"
 STATICFILES_LOCATION = "static"
 MEDIAFILES_LOCATION = "media"

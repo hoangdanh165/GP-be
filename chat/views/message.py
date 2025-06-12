@@ -21,48 +21,72 @@ from django.utils import timezone
 from base.utils.custom_pagination import CustomPagination
 from ..models.message import Message
 from ..serializers.message import MessageSerializer
-from ..models.conversation import Conversation  
+from ..models.conversation import Conversation
+from storages.backends.gcloud import GoogleCloudStorage
+import uuid
+import re
 
+
+def clean_filename(filename):
+    name, ext = os.path.splitext(filename)
+    name = re.sub(r"[^\w\-\.]", "_", name)
+    return f"{uuid.uuid4().hex}_{name}{ext}"
 
 
 class MessageViewSet(viewsets.ModelViewSet):
     # queryset = Message.objects.all().order_by('-create_at')
-   
+
     permission_classes = [IsAuthenticated]
     serializer_class = MessageSerializer
     # pagination_class = CustomPagination
 
     def get_queryset(self):
         user = self.request.user
-        return Message.objects.filter(Q(sender=user) | Q(receiver=user)).order_by("created_at")
-    
+        return Message.objects.filter(Q(sender=user) | Q(receiver=user)).order_by(
+            "created_at"
+        )
 
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
 
-    @action(methods=['get'], url_path='chat-with', detail=False, permission_classes=[IsAuthenticated], 
-    renderer_classes=[renderers.JSONRenderer])
+    @action(
+        methods=["get"],
+        url_path="chat-with",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
     def chat_with(self, request):
         other_user_id = request.query_params.get("user_id")
         if not other_user_id:
             return Response({"error": "user_id is required"}, status=400)
 
         messages = Message.objects.filter(
-            Q(sender=request.user, receiver_id=other_user_id) |
-            Q(sender_id=other_user_id, receiver=request.user)
+            Q(sender=request.user, receiver_id=other_user_id)
+            | Q(sender_id=other_user_id, receiver=request.user)
         ).order_by("created_at")
 
         serializer = self.get_serializer(messages, many=True)
         return Response(serializer.data)
-    
-    @action(methods=['get'], url_path='by-conversation/(?P<conversation_id>[^/.]+)', detail=False, permission_classes=[IsAuthenticated])
+
+    @action(
+        methods=["get"],
+        url_path="by-conversation/(?P<conversation_id>[^/.]+)",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+    )
     def get_messages_by_conversation(self, request, conversation_id):
         conversation = get_object_or_404(Conversation, id=conversation_id)
 
         if request.user not in conversation.participants.all():
-            return Response({"error": "You don't have permission to access this conversation!"}, status=403)
+            return Response(
+                {"error": "You don't have permission to access this conversation!"},
+                status=403,
+            )
 
-        messages = Message.objects.filter(conversation=conversation).order_by("created_at")
+        messages = Message.objects.filter(conversation=conversation).order_by(
+            "created_at"
+        )
 
         page = self.paginate_queryset(messages)
         if page is not None:
@@ -71,3 +95,34 @@ class MessageViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(messages, many=True)
         return Response(serializer.data)
+
+    @action(
+        methods=["post"],
+        detail=False,
+        url_path="upload-image",
+        permission_classes=[IsAuthenticated],
+    )
+    def upload_image(self, request):
+        image_file = request.FILES.get("image")
+
+        if not image_file:
+            return Response(
+                {"error": "No image provided"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            filename = clean_filename(image_file.name)
+            filepath = f"media/message_images/{filename}"
+
+            # Storage instance
+            gcs = GoogleCloudStorage()
+            saved_path = gcs.save(filepath, image_file)
+
+            image_url = gcs.url(saved_path)
+
+            return Response({"image_url": image_url}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
