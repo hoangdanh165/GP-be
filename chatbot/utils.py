@@ -57,6 +57,7 @@ def search_similar_services(query, limit=5):
 def get_all_services():
     try:
         services = Service.objects.all().values(
+            "id",
             "name",
             "description",
             "price",
@@ -68,6 +69,7 @@ def get_all_services():
         )
         services = [
             {
+                "id": service["id"],
                 "name": service["name"],
                 "description": service["description"],
                 "price": float(service["price"]),
