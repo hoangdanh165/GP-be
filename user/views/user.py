@@ -28,6 +28,10 @@ from ..models import User, UserResetPassword
 from base.utils.custom_pagination import CustomPagination
 from ..serializers.user import StaffSerializer
 from chat.models.conversation import Conversation
+from django.db.models.functions import TruncMonth, TruncDate
+from django.utils.timezone import now
+from django.db.models import Count, Q
+
 from ..services.user import (
     verify_token,
     send_verification_email,
@@ -780,3 +784,75 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = UserInfoSerializer(customers, many=True)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="stats/customers-last-30-days",
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def customers_last_30_days(self, request):
+        from datetime import timedelta
+
+        today = now().date()
+        start_date = today - timedelta(days=29)
+
+        customers_per_day = (
+            User.objects.filter(role__name="customer", create_at__date__gte=start_date)
+            .annotate(day=TruncDate("create_at"))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+
+        date_to_count = {entry["day"]: entry["count"] for entry in customers_per_day}
+
+        data = []
+        for i in range(30):
+            day = start_date + timedelta(days=i)
+            data.append(date_to_count.get(day, 0))
+
+        response_data = {
+            "month": today.month,
+            "year": today.year,
+            "title": "Customers",
+            "value": sum(data),
+            "interval": "Last 30 days",
+            "data": data,
+            "trend": "up" if data[-1] > data[0] else "down",
+        }
+        return Response(response_data)
+
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="stats/top-customers",
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def top_customers(self, request):
+        customers = (
+            User.objects.filter(role__name="customer")
+            .annotate(
+                appointment_count=Count(
+                    "appointments", filter=Q(appointments__status="completed")
+                )
+            )
+            .order_by("-appointment_count")
+        )
+
+        result = [
+            {
+                "id": customer.id,
+                "avatar": customer.get_avatar(),
+                "full_name": customer.full_name,
+                "email": customer.email,
+                "phone": customer.phone,
+                "address": customer.address,
+                "appointment_count": customer.appointment_count,
+            }
+            for customer in customers
+        ]
+
+        return Response(result)

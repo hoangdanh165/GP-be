@@ -157,5 +157,5 @@ def classify_intent(query: str, similarity_threshold: float = 0.7) -> str:
 
 
 # view_all_cache()
-delete_all_redis_cache()
+# delete_all_redis_cache()
 # precompute_embeddings(ROUTES)
