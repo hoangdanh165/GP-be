@@ -15,6 +15,8 @@ from ..serializers.service import ServiceSerializer, ServiceUpdateSerializer
 from ..serializers.category import CategorySerializer
 from ..models.category import Category
 from user.permissions import IsAdmin
+from ..models.appointment_service import AppointmentService
+from django.utils.timezone import now
 
 
 class ServiceViewSet(viewsets.ModelViewSet):
@@ -108,3 +110,54 @@ class ServiceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(
+        methods=["get"],
+        url_path="stats/category-usage-last-30-days",
+        detail=False,
+        permission_classes=[AllowAny],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def category_usage_last_30_days(self, request):
+        from datetime import timedelta
+        from django.db.models import Count
+        from django.db.models.functions import TruncDate
+        from collections import defaultdict
+
+        today = now().date()
+        start_date = today - timedelta(days=29)
+        valid_statuses = ["completed", "confirmed", "processing", "pending"]
+
+        services = (
+            AppointmentService.objects.filter(
+                appointment__create_at__date__gte=start_date,
+                appointment__status__in=valid_statuses,
+            )
+            .annotate(day=TruncDate("appointment__create_at"))
+            .values("day", "service__category__name")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+
+        # {(category): {day: count}}
+        usage_map = defaultdict(lambda: defaultdict(int))
+        categories_set = set()
+
+        for entry in services:
+            day = entry["day"]
+            category = entry["service__category__name"]
+            count = entry["count"]
+
+            usage_map[category][day] += count
+            categories_set.add(category)
+
+        # Convert về format mày cần
+        result = []
+        for category in categories_set:
+            values = []
+            for i in range(30):
+                day = start_date + timedelta(days=i)
+                values.append(usage_map[category].get(day, 0))
+            result.append({"id": category, "label": category, "data": values})
+
+        return Response({"interval": "Last 30 days", "data": result})

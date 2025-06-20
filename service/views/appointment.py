@@ -13,6 +13,8 @@ from django.utils import timezone
 from base.utils.custom_pagination import CustomPagination
 from ..models.appointment import Appointment
 from ..models.appointment_service import AppointmentService
+from django.utils.timezone import now
+
 from ..serializers.appointment import (
     AppointmentSerializer,
     AppointmentDetailSerializer,
@@ -24,9 +26,12 @@ from ..services.appoinment import (
 )
 from base.utils.custom_pagination import CustomPaginationAppointment
 from functools import reduce
+from django.db.models.functions import TruncDate
+from django.db.models import Count
+from django.db.models import Q
+from datetime import timedelta
 import operator
 from django.utils.dateparse import parse_date
-from django.db.models import Q
 
 from datetime import datetime
 
@@ -305,3 +310,44 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 {"error": f"Something went wrong: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(
+        methods=["get"],
+        url_path="stats/appointments-last-30-days",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def appointments_last_30_days(self, request):
+        today = now().date()
+        start_date = today - timedelta(days=29)
+
+        valid_statuses = ["completed", "confirmed", "processing", "pending"]
+
+        appointments_per_day = (
+            Appointment.objects.filter(
+                create_at__date__gte=start_date,
+                status__in=valid_statuses,
+            )
+            .annotate(day=TruncDate("create_at"))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+
+        date_to_count = {entry["day"]: entry["count"] for entry in appointments_per_day}
+
+        data = []
+        for i in range(30):
+            day = start_date + timedelta(days=i)
+            data.append(date_to_count.get(day, 0))
+
+        return Response(
+            {
+                "title": "Appointments",
+                "value": sum(data),
+                "interval": "Last 30 days",
+                "trend": "up" if data[-1] > data[0] else "down",
+                "data": data,
+            }
+        )
