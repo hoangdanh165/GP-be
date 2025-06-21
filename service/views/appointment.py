@@ -351,3 +351,55 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 "data": data,
             }
         )
+
+    @action(
+        methods=["get"],
+        url_path="stats/popular-time-slots",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def popular_time_slots(self, request):
+        today = now().date()
+        start_date = today - timedelta(days=29)
+        queryset = Appointment.objects.filter(date__date__gte=start_date)
+
+        # Define khung giờ
+        time_slots = [
+            ("08:00", "09:59"),
+            ("10:00", "11:59"),
+            ("13:30", "15:29"),
+            ("15:30", "17:30"),
+        ]
+
+        slot_labels = [f"{start} - {end}" for start, end in time_slots]
+        data = [0 for _ in time_slots]
+
+        for idx, (start_str, end_str) in enumerate(time_slots):
+            start_hour = datetime.strptime(start_str, "%H:%M").time()
+            end_hour = datetime.strptime(end_str, "%H:%M").time()
+
+            count = queryset.filter(
+                date__time__gte=start_hour,
+                date__time__lte=end_hour,
+            ).count()
+
+            data[idx] = count
+
+        response = {
+            "xAxis": {
+                "scaleType": "band",
+                "categoryGapRatio": 0.5,
+                "data": slot_labels,
+            },
+            "series": [
+                {
+                    "id": "appointments",
+                    "label": "Appointments",
+                    "data": data,
+                    "stack": "A",
+                }
+            ],
+        }
+
+        return Response(response)

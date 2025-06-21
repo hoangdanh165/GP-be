@@ -816,7 +816,7 @@ class UserViewSet(viewsets.ModelViewSet):
         response_data = {
             "month": today.month,
             "year": today.year,
-            "title": "Customers",
+            "title": "New customers",
             "value": sum(data),
             "interval": "Last 30 days",
             "data": data,

@@ -17,6 +17,7 @@ from django.utils.dateparse import parse_date
 from functools import reduce
 import operator
 from django.db.models import Q
+from django.db.models import Avg, Count
 
 
 class FeedbackViewSet(viewsets.ModelViewSet):
@@ -148,3 +149,24 @@ class FeedbackViewSet(viewsets.ModelViewSet):
                 {"error": f"Something went wrong: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(
+        methods=["get"],
+        url_path="stats/average-rating-all-time",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def garage_rating(self, request):
+
+        stats = Feedback.objects.aggregate(
+            average_rating=Avg("rating"), total_feedback=Count("id")
+        )
+
+        return Response(
+            {
+                "title": "Garage's rating",
+                "value": round(stats["average_rating"] or 0, 1),
+                "total": stats["total_feedback"] or 0,
+            }
+        )
