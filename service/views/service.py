@@ -121,43 +121,57 @@ class ServiceViewSet(viewsets.ModelViewSet):
     def category_usage_last_30_days(self, request):
         from datetime import timedelta
         from django.db.models import Count
-        from django.db.models.functions import TruncDate
         from collections import defaultdict
 
         today = now().date()
         start_date = today - timedelta(days=29)
         valid_statuses = ["completed", "confirmed", "processing", "pending"]
 
-        services = (
+        # Lấy tổng theo category
+        category_totals = (
             AppointmentService.objects.filter(
                 appointment__create_at__date__gte=start_date,
                 appointment__status__in=valid_statuses,
             )
-            .annotate(day=TruncDate("appointment__create_at"))
-            .values("day", "service__category__name")
-            .annotate(count=Count("id"))
-            .order_by("day")
+            .values("service__category__name")
+            .annotate(total=Count("id"))
+            .order_by("-total")
         )
 
-        # {(category): {day: count}}
-        usage_map = defaultdict(lambda: defaultdict(int))
-        categories_set = set()
+        # Lấy theo từng service trong từng category
+        service_counts = (
+            AppointmentService.objects.filter(
+                appointment__create_at__date__gte=start_date,
+                appointment__status__in=valid_statuses,
+            )
+            .values("service__category__name", "service__name")
+            .annotate(count=Count("id"))
+        )
 
-        for entry in services:
-            day = entry["day"]
-            category = entry["service__category__name"]
+        # Gom dịch vụ theo category
+        category_services = defaultdict(list)
+        for entry in service_counts:
+            category_name = entry["service__category__name"]
+            service_name = entry["service__name"]
             count = entry["count"]
+            category_services[category_name].append(
+                {"name": service_name, "count": count}
+            )
 
-            usage_map[category][day] += count
-            categories_set.add(category)
-
-        # Convert về format mày cần
+        # Tổng hợp kết quả
         result = []
-        for category in categories_set:
-            values = []
-            for i in range(30):
-                day = start_date + timedelta(days=i)
-                values.append(usage_map[category].get(day, 0))
-            result.append({"id": category, "label": category, "data": values})
+        for cat in category_totals:
+            category_name = cat["service__category__name"]
+            result.append(
+                {
+                    "label": category_name,
+                    "total": cat["total"],
+                    "services": sorted(
+                        category_services[category_name],
+                        key=lambda x: x["count"],
+                        reverse=True,
+                    ),
+                }
+            )
 
         return Response({"interval": "Last 30 days", "data": result})

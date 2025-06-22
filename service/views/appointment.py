@@ -360,11 +360,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         renderer_classes=[renderers.JSONRenderer],
     )
     def popular_time_slots(self, request):
-        today = now().date()
-        start_date = today - timedelta(days=29)
-        queryset = Appointment.objects.filter(date__date__gte=start_date)
+        queryset = Appointment.objects.all()
 
-        # Define khung giờ
         time_slots = [
             ("08:00", "09:59"),
             ("10:00", "11:59"),
