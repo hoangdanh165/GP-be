@@ -19,8 +19,9 @@ from django.utils.dateparse import parse_date
 from django.db.models.functions import TruncDate
 from django.db.models import Sum
 from datetime import date
-
-
+from service.models.appointment_service import AppointmentService
+from django.db.models import Sum, F
+from django.utils.dateparse import parse_date
 from ..serializers.payment import (
     PaymentSerializer,
     PaymentDetailSerializer,
@@ -500,7 +501,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         methods=["get"],
         url_path="stats/revenue",
         detail=False,
-        permission_classes=[AllowAny],
+        permission_classes=[IsAuthenticated],
         renderer_classes=[renderers.JSONRenderer],
     )
     def revenue(self, request):
@@ -534,3 +535,41 @@ class PaymentViewSet(viewsets.ModelViewSet):
         ]
 
         return Response({"total_revenue": float(total_revenue), "data": data})
+
+    @action(
+        methods=["get"],
+        url_path="stats/revenue-by-categories",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def revenue_by_categories(self, request):
+        from_date = request.query_params.get("from")
+        to_date = request.query_params.get("to")
+
+        try:
+            from_date = parse_date(from_date) or date.today().replace(day=1)
+            to_date = parse_date(to_date) or date.today()
+        except Exception:
+            return Response({"error": "Invalid date format"}, status=400)
+
+        paid_appointments = Payment.objects.filter(
+            status="paid", paid_at__date__gte=from_date, paid_at__date__lte=to_date
+        ).values_list("appointment_id", flat=True)
+
+        qs = AppointmentService.objects.filter(
+            appointment_id__in=paid_appointments
+        ).select_related("service__category")
+
+        grouped = (
+            qs.values(category=F("service__category__name"))
+            .annotate(total=Sum("price"))
+            .order_by("-total")
+        )
+
+        total_revenue = sum(item["total"] for item in grouped)
+
+        for item in grouped:
+            print(f"   🧾 {item['category']}: {int(item['total']):,} đ")
+
+        return Response({"total_revenue": float(total_revenue), "data": list(grouped)})
