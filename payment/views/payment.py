@@ -569,7 +569,4 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         total_revenue = sum(item["total"] for item in grouped)
 
-        for item in grouped:
-            print(f"   🧾 {item['category']}: {int(item['total']):,} đ")
-
         return Response({"total_revenue": float(total_revenue), "data": list(grouped)})
