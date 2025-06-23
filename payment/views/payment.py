@@ -15,6 +15,11 @@ from django.db.models import Q
 from django.utils.dateparse import parse_date
 from functools import reduce
 import operator
+from django.utils.dateparse import parse_date
+from django.db.models.functions import TruncDate
+from django.db.models import Sum
+from datetime import date
+
 
 from ..serializers.payment import (
     PaymentSerializer,
@@ -490,3 +495,42 @@ class PaymentViewSet(viewsets.ModelViewSet):
                 {"RspCode": "99", "Message": f"Internal server error: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(
+        methods=["get"],
+        url_path="stats/revenue",
+        detail=False,
+        permission_classes=[AllowAny],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def revenue(self, request):
+        from_date = request.query_params.get("from")
+        to_date = request.query_params.get("to")
+
+        try:
+            from_date = parse_date(from_date) or date.today().replace(day=1)
+            to_date = parse_date(to_date) or date.today()
+        except Exception:
+            return Response({"error": "Invalid date format"}, status=400)
+
+        qs = Payment.objects.filter(
+            paid_at__date__gte=from_date,
+            paid_at__date__lte=to_date,
+            status=Payment.PaymentStatus.PAID,
+        )
+
+        grouped = (
+            qs.annotate(day=TruncDate("paid_at"))
+            .values("day")
+            .annotate(total=Sum("amount"))
+            .order_by("day")
+        )
+
+        total_revenue = qs.aggregate(total=Sum("amount"))["total"] or 0
+
+        data = [
+            {"date": str(item["day"]), "total": float(item["total"] or 0)}
+            for item in grouped
+        ]
+
+        return Response({"total_revenue": float(total_revenue), "data": data})

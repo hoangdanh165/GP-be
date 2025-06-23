@@ -14,7 +14,7 @@ from base.utils.custom_pagination import CustomPagination
 from ..models.appointment import Appointment
 from ..models.appointment_service import AppointmentService
 from django.utils.timezone import now
-
+from datetime import date
 from ..serializers.appointment import (
     AppointmentSerializer,
     AppointmentDetailSerializer,
@@ -437,3 +437,54 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         ]
 
         return Response(response_data)
+
+    @action(
+        methods=["get"],
+        url_path="stats/count-by-status",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def count_by_status(self, request):
+        from_date = request.query_params.get("from")
+        to_date = request.query_params.get("to")
+
+        try:
+            from_date = parse_date(from_date) or date.today().replace(day=1)
+            to_date = parse_date(to_date) or date.today()
+        except Exception:
+            return Response({"error": "Invalid date format"}, status=400)
+
+        qs = Appointment.objects.filter(
+            date__date__gte=from_date, date__date__lte=to_date
+        )
+
+        total_by_status = (
+            qs.values("status").annotate(count=Count("id")).order_by("status")
+        )
+        total_status_dict = {item["status"]: item["count"] for item in total_by_status}
+
+        dates = (
+            qs.annotate(day=TruncDate("date")).values("day").distinct().order_by("day")
+        )
+
+        status_choices = [choice[0] for choice in Appointment.StatusChoices.choices]
+
+        daily_counts = []
+        for d in dates:
+            day = d["day"]
+            daily_qs = qs.filter(date__date=day)
+
+            by_status = {
+                status: daily_qs.filter(status=status).count()
+                for status in status_choices
+            }
+            total = sum(by_status.values())
+
+            daily_counts.append(
+                {"date": str(day), "total": total, "by_status": by_status}
+            )
+
+        return Response(
+            {"total_by_status": total_status_dict, "daily_counts": daily_counts}
+        )
