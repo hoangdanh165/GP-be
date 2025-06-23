@@ -400,3 +400,40 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         }
 
         return Response(response)
+
+    @action(
+        methods=["get"],
+        url_path="stats/popular-car-brands",
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        renderer_classes=[renderers.JSONRenderer],
+    )
+    def popular_car_brands(self, request):
+        appointments = Appointment.objects.all()
+
+        stats = {}
+        for appt in appointments:
+            vehicle = appt.vehicle_information or {}
+            brand = vehicle.get("brand", "Unknown")
+            name = vehicle.get("name", "Unknown")
+
+            if brand not in stats:
+                stats[brand] = {}
+
+            if name not in stats[brand]:
+                stats[brand][name] = 0
+
+            stats[brand][name] += 1
+
+        response_data = [
+            {
+                "brand": brand,
+                "total": sum(types.values()),
+                "types": [
+                    {"name": name, "count": count} for name, count in types.items()
+                ],
+            }
+            for brand, types in stats.items()
+        ]
+
+        return Response(response_data)
