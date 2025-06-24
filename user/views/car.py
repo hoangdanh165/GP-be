@@ -80,7 +80,7 @@ class CarViewSet(viewsets.ModelViewSet):
         methods=["post"],
         detail=False,
         url_path="delete-multiple",
-        permission_classes=[IsAdmin],
+        permission_classes=[IsAuthenticated],
     )
     def delete_multiple(self, request):
         car_ids = request.data.get("ids", [])
