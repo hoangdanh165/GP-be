@@ -257,7 +257,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     )
     def get_all_appointments(self, request):
         try:
-            appointments = Appointment.objects.all().order_by("-create_at")
+            user = request.user
+            appointments = Appointment.objects.filter(customer=user).order_by(
+                "-create_at"
+            )
 
             search = request.query_params.get("search")
             status_filter = request.query_params.get("status")
